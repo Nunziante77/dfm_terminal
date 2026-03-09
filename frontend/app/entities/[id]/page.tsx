@@ -192,9 +192,18 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
         {tab === "context" && (
           cLoading ? <LoadingMsg /> :
           context ? (
-            <div>
-              <div className="text-terminal-secondary text-xs mb-3 px-1">{context.count} context rows</div>
-              <DataTable data={context.context_rows} maxHeight="calc(100vh - 340px)" />
+            <div className="flex flex-col gap-2">
+              <div className="text-terminal-secondary text-xs px-1">
+                {context.count} context rows from <span className="font-mono text-terminal-dim">v_dfm_entity_context_v1</span>
+              </div>
+              <div className="panel">
+                {/* Show only the variable/relational columns — entity identity fields repeat on every row */}
+                <DataTable
+                  data={context.context_rows}
+                  columns={["dfm_tech_code", "pr_code", "normative_atom_id", "normative_eval_evidence", "project_id", "sanction_entity_id"]}
+                  maxHeight="calc(100vh - 360px)"
+                />
+              </div>
             </div>
           ) : <EmptyMsg />
         )}

@@ -17,6 +17,7 @@ import {
   BookOpen,
   Globe2,
   Calendar,
+  Activity,
 } from "lucide-react";
 
 type NavSection = {
@@ -34,6 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/priorities", label: "PRIORITIES",  icon: Cpu,           shortcut: "P" },
       { href: "/graph",      label: "GRAPH",       icon: GitBranch,     shortcut: "G" },
       { href: "/compare",    label: "COMPARE",     icon: ArrowLeftRight,shortcut: "C" },
+      { href: "/scenarios",  label: "SCENARIOS",   icon: Activity,      shortcut: "X" },
     ],
   },
   {

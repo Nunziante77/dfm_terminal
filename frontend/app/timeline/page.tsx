@@ -8,10 +8,13 @@ import StatusBar from "@/components/StatusBar";
 import DataTable from "@/components/DataTable";
 
 function TimelineEvent({ row, index }: { row: ViewRow; index: number }) {
-  const date = String(row.event_date ?? row.date ?? row.created_at ?? row.updated_at ?? "");
-  const title = String(row.event_name ?? row.title ?? row.event_type ?? row.context_type ?? `Event ${index + 1}`);
-  const desc = String(row.description ?? row.summary ?? row.context_value ?? "");
-  const entity = String(row.entity_name ?? row.entity_id ?? "");
+  // dfm_events_v1 columns: event_id, entity_id, event_type, event_source, event_date,
+  //                         country_code, event_value, currency, created_at
+  const date   = String(row.event_date ?? row.created_at ?? "");
+  const title  = String(row.event_type ?? `Event ${index + 1}`);
+  const source = String(row.event_source ?? "");
+  const entity = String(row.entity_id ?? "");
+  const value  = row.event_value != null ? `${String(row.event_value)} ${String(row.currency ?? "")}`.trim() : "";
 
   return (
     <div className="flex gap-4 group">
@@ -24,16 +27,13 @@ function TimelineEvent({ row, index }: { row: ViewRow; index: number }) {
       <div className="panel px-4 py-3 mb-3 flex-1">
         <div className="flex items-start justify-between gap-2 mb-1">
           <span className="text-terminal-cyan text-xs font-semibold tracking-wide">{title}</span>
-          {date && (
-            <span className="text-terminal-dim text-xs shrink-0">{date}</span>
-          )}
+          {date && <span className="text-terminal-dim text-xs shrink-0">{date}</span>}
         </div>
-        {entity && (
-          <div className="text-terminal-secondary text-xs mb-1">{entity}</div>
-        )}
-        {desc && (
-          <p className="text-terminal-text text-xs leading-relaxed">{desc}</p>
-        )}
+        <div className="flex gap-4 text-xs text-terminal-secondary">
+          {entity && <span className="font-mono">{entity}</span>}
+          {source && <span className="text-terminal-dim">{source}</span>}
+          {value  && <span className="text-terminal-green">{value}</span>}
+        </div>
       </div>
     </div>
   );
@@ -54,7 +54,7 @@ export default function TimelinePage() {
       <div className="flex items-center gap-3">
         <Clock size={16} className="text-terminal-cyan" />
         <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">EVENT TIMELINE</h1>
-        <span className="text-terminal-dim text-xs">v_dfm_entity_context_v1</span>
+        <span className="text-terminal-dim text-xs">dfm_events_v1</span>
       </div>
 
       <div className="panel p-3 flex items-center gap-3">

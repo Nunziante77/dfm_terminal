@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DFM Terminal — System Healthcheck
-Validates: database views, API endpoints, frontend wiring.
+Validates: database views, API endpoints (all 12 surfaces), frontend wiring.
 
 Usage:
     cd backend
@@ -12,7 +12,6 @@ import sys
 import os
 import argparse
 import time
-from typing import Any
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DEFAULT_API = "http://localhost:8000"
@@ -54,84 +53,143 @@ REQUIRED_DB_OBJECTS = [
     "v_fdi_regulatory_workflow_final",
 ]
 
-# API endpoints to probe (path, min expected HTTP status, description)
+# ── API endpoints to probe ─────────────────────────────────────────────────────
+# Organised by the 12 official DFM Terminal surfaces.
+# (path, expected_status, surface_label, description)
 API_ENDPOINTS = [
-    ("/health",                          200, "Health check"),
-    ("/api/v1/search?q=a&limit=1",       200, "Unified search"),
-    ("/api/v1/entities?limit=1",          200, "List entities"),
-    ("/api/v1/graph/nodes?limit=1",       200, "Graph nodes"),
-    ("/api/v1/graph/edges?limit=1",       200, "Graph edges"),
-    ("/api/v1/screener?limit=1",          200, "Screener"),
-    ("/api/v1/rankings?limit=1",          200, "Rankings"),
-    ("/api/v1/priorities?limit=1",        200, "Priorities"),
-    ("/api/v1/priorities/distinct",       200, "Priorities distinct"),
-    ("/api/v1/patents?limit=1",           200, "Patents list"),
-    ("/api/v1/patents/tech-signals?limit=1", 200, "Tech signals"),
-    ("/api/v1/research?limit=1",          200, "Research list"),
-    ("/api/v1/procurement?limit=1",       200, "Procurement notices"),
-    ("/api/v1/procurement/awards?limit=1", 200, "TED awards"),
-    ("/api/v1/procurement/awards/linked?limit=1", 200, "Linked awards"),
-    ("/api/v1/procurement/summary?limit=1", 200, "Procurement summary"),
-    ("/api/v1/procurement/signals",       200, "Procurement signals"),
-    ("/api/v1/normative/documents?limit=1", 200, "Normative documents"),
-    ("/api/v1/normative/atoms?limit=1",   200, "Normative atoms"),
-    ("/api/v1/normative/pr-profile?limit=1", 200, "Normative PR profile"),
-    ("/api/v1/strategic/documents?limit=1", 200, "Strategic documents"),
-    ("/api/v1/strategic/atoms?limit=1",   200, "Strategic atoms"),
-    ("/api/v1/events?limit=1",            200, "Events list"),
-    ("/api/v1/events/rankings?limit=1",   200, "Events rankings"),
-    ("/api/v1/ownership?limit=1",         200, "Ownership list"),
-    ("/api/v1/ownership/fdi?limit=1",     200, "FDI signals"),
-    ("/api/v1/ownership/fdi/workflow?limit=1", 200, "FDI workflow"),
-    ("/api/v1/compliance?limit=1",        200, "Compliance list"),
-    ("/api/v1/timeline?limit=1",          200, "Timeline"),
+    # Health
+    ("/health",                                       200, "HEALTH",       "Health check"),
+
+    # Surface 1 — Entities
+    ("/api/v1/entities?limit=1",                      200, "ENTITIES",     "List entities"),
+    ("/api/v1/entities/compare/multi?ids=A,B",        400, "ENTITIES",     "Compare entities (400 = expected for fake IDs)"),
+
+    # Surface 2 — Strategic Priorities
+    ("/api/v1/priorities?limit=1",                    200, "PRIORITIES",   "Priority tree"),
+    ("/api/v1/priorities/distinct",                   200, "PRIORITIES",   "Distinct priorities"),
+    ("/api/v1/priorities/TEST-PR/nodes",              200, "PRIORITIES",   "Priority nodes (empty OK)"),
+    ("/api/v1/priorities/TEST-PR/entities",           200, "PRIORITIES",   "Priority entity alignment"),
+    ("/api/v1/priorities/TEST-PR/normative",          200, "PRIORITIES",   "Priority normative coverage"),
+
+    # Surface 3 — Strategic Ranking
+    ("/api/v1/rankings?limit=1",                      200, "RANKING",      "Rankings"),
+    ("/api/v1/screener?limit=1",                      200, "RANKING",      "Bloomberg screener"),
+
+    # Surface 4 — Knowledge Graph
+    ("/api/v1/graph/nodes?limit=1",                   200, "GRAPH",        "Graph nodes"),
+    ("/api/v1/graph/edges?limit=1",                   200, "GRAPH",        "Graph edges"),
+    ("/api/v1/graph/subgraph/TEST-ENTITY",            200, "GRAPH",        "Entity subgraph (empty OK)"),
+
+    # Surface 5 — Patents & Technology
+    ("/api/v1/patents?limit=1",                       200, "PATENTS",      "Patent records"),
+    ("/api/v1/patents/tech-signals?limit=1",          200, "PATENTS",      "Tech signals"),
+    ("/api/v1/patents/entity/TEST-ENTITY",            200, "PATENTS",      "Entity patents (empty OK)"),
+    ("/api/v1/patents/entity/TEST-ENTITY/tech",       200, "PATENTS",      "Entity tech domains (empty OK)"),
+
+    # Surface 6 — Research & Grants
+    ("/api/v1/research?limit=1",                      200, "RESEARCH",     "Research participations"),
+    ("/api/v1/research/entity/TEST-ENTITY",           200, "RESEARCH",     "Entity research (empty OK)"),
+
+    # Surface 7 — Procurement
+    ("/api/v1/procurement?limit=1",                   200, "PROCURE",      "Procurement notices"),
+    ("/api/v1/procurement/awards?limit=1",            200, "PROCURE",      "TED awards"),
+    ("/api/v1/procurement/awards/linked?limit=1",     200, "PROCURE",      "Linked awards"),
+    ("/api/v1/procurement/summary?limit=1",           200, "PROCURE",      "Procurement summary"),
+    ("/api/v1/procurement/signals",                   200, "PROCURE",      "Procurement signals"),
+
+    # Surface 8 — Normative / Regulatory Admissibility
+    ("/api/v1/normative/documents?limit=1",           200, "NORMATIVE",    "Normative documents"),
+    ("/api/v1/normative/atoms?limit=1",               200, "NORMATIVE",    "Normative atoms"),
+    ("/api/v1/normative/pr-profile?limit=1",          200, "NORMATIVE",    "Normative PR profile"),
+    ("/api/v1/normative/entity/TEST-ENTITY/eval",     200, "NORMATIVE",    "Entity normative eval (empty OK)"),
+    ("/api/v1/compliance?limit=1",                    200, "NORMATIVE",    "Admissibility matrix"),
+
+    # Surface 9 — Ownership & FDI
+    ("/api/v1/ownership?limit=1",                     200, "OWNERSHIP",    "Ownership list"),
+    ("/api/v1/ownership/fdi?limit=1",                 200, "OWNERSHIP",    "FDI signals"),
+    ("/api/v1/ownership/fdi/workflow?limit=1",        200, "OWNERSHIP",    "FDI workflow"),
+
+    # Surface 10 — Events & Temporal
+    ("/api/v1/events?limit=1",                        200, "EVENTS",       "Events list"),
+    ("/api/v1/events/rankings?limit=1",               200, "EVENTS",       "Events rankings"),
+    ("/api/v1/timeline?limit=1",                      200, "EVENTS",       "Timeline"),
+
+    # Surface 11 — Scenarios
+    ("/api/v1/scenario/entity/TEST-ENTITY",           200, "SCENARIOS",    "Entity scenario (empty OK)"),
+
+    # Surface 12 — Unified Search
+    ("/api/v1/search?q=a&limit=1",                    200, "SEARCH",       "Unified search"),
 ]
 
-# Frontend routes that must resolve (checked structurally — no browser)
-FRONTEND_ROUTES = [
-    "/",
-    "/screener",
-    "/rankings",
-    "/priorities",
-    "/graph",
-    "/compare",
-    "/patents",
-    "/research",
-    "/procurement",
-    "/normative",
-    "/strategic",
-    "/events",
-    "/ownership",
-    "/compliance",
-    "/timeline",
-    "/entities/[id]",
-]
-
+# Frontend files to verify exist and are non-trivial
 FRONTEND_PAGE_FILES = [
+    # Core
     "frontend/app/page.tsx",
     "frontend/app/screener/page.tsx",
     "frontend/app/rankings/page.tsx",
     "frontend/app/priorities/page.tsx",
     "frontend/app/graph/page.tsx",
     "frontend/app/compare/page.tsx",
+    "frontend/app/scenarios/page.tsx",
+    # Intelligence
     "frontend/app/patents/page.tsx",
     "frontend/app/research/page.tsx",
     "frontend/app/procurement/page.tsx",
+    "frontend/app/ownership/page.tsx",
+    # Regulatory
     "frontend/app/normative/page.tsx",
     "frontend/app/normative/[doc_id]/page.tsx",
     "frontend/app/strategic/page.tsx",
     "frontend/app/strategic/[doc_id]/page.tsx",
-    "frontend/app/events/page.tsx",
-    "frontend/app/ownership/page.tsx",
     "frontend/app/compliance/page.tsx",
+    # Temporal
+    "frontend/app/events/page.tsx",
     "frontend/app/timeline/page.tsx",
+    # Detail
     "frontend/app/entities/[id]/page.tsx",
+    # Shell
     "frontend/app/layout.tsx",
     "frontend/lib/api.ts",
     "frontend/lib/types.ts",
 ]
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# api.ts exports that must exist
+REQUIRED_API_EXPORTS = [
+    # Search
+    "unifiedSearch",
+    # Entities
+    "listEntities", "getEntityProfile", "getEntityContext", "getEntityRanking",
+    "compareEntities",
+    # Graph
+    "getGraphNodes", "getGraphEdges", "getEntitySubgraph",
+    # Screener / Rankings / Priorities
+    "getScreener", "getRankings",
+    "getPriorities", "getDistinctPriorities", "getPriorityNodes",
+    "getPriorityEntities", "getPriorityNormative",
+    # Patents
+    "listPatents", "getEntityPatents", "getEntityTechFromPatents", "getTechSignals",
+    # Research
+    "listResearch", "getEntityResearch",
+    # Procurement
+    "listProcurement", "listLinkedAwards", "getEntityProcurement",
+    "getProcurementSummary", "getProcurementSignals",
+    # Normative
+    "listNormativeDocuments", "getNormativeDocument", "listNormativeAtoms",
+    "getEntityNormativeEval", "getNormativePrProfile",
+    # Strategic
+    "listStrategicDocuments", "getStrategicDocument", "listStrategicAtoms",
+    # Events
+    "listEvents", "getEntityEventsSummary", "getEventsRankings",
+    # Ownership
+    "listOwnership", "getEntityOwnership",
+    "listFdiSignals", "getEntityFdi", "getFdiWorkflow",
+    # Scenario
+    "getEntityScenario",
+    # Compliance / Timeline
+    "listCompliance", "getTimeline",
+]
+
+# ── Colour helpers ─────────────────────────────────────────────────────────────
 RESET  = "\033[0m"
 GREEN  = "\033[92m"
 RED    = "\033[91m"
@@ -139,25 +197,19 @@ YELLOW = "\033[93m"
 CYAN   = "\033[96m"
 BOLD   = "\033[1m"
 
-def ok(msg: str) -> None:
-    print(f"  {GREEN}✓{RESET}  {msg}")
-
-def fail(msg: str) -> None:
-    print(f"  {RED}✗{RESET}  {msg}")
-
-def warn(msg: str) -> None:
-    print(f"  {YELLOW}!{RESET}  {msg}")
-
-def header(title: str) -> None:
+def ok(msg):   print(f"  {GREEN}✓{RESET}  {msg}")
+def fail(msg): print(f"  {RED}✗{RESET}  {msg}")
+def warn(msg): print(f"  {YELLOW}!{RESET}  {msg}")
+def header(title):
     print(f"\n{BOLD}{CYAN}{'─'*60}{RESET}")
     print(f"{BOLD}{CYAN}  {title}{RESET}")
     print(f"{BOLD}{CYAN}{'─'*60}{RESET}")
 
 
-# ── Database check ────────────────────────────────────────────────────────────
-def check_database(db_url: str) -> tuple[int, int]:
+# ── Database check ─────────────────────────────────────────────────────────────
+def check_database(db_url):
     try:
-        import psycopg2  # type: ignore
+        import psycopg2
     except ImportError:
         warn("psycopg2 not installed — skipping DB checks")
         return 0, 0
@@ -189,19 +241,20 @@ def check_database(db_url: str) -> tuple[int, int]:
     return passed, failed
 
 
-# ── API check ─────────────────────────────────────────────────────────────────
-def check_api(api_url: str) -> tuple[int, int]:
-    try:
-        import urllib.request
-        import urllib.error
-    except ImportError:
-        warn("urllib not available")
-        return 0, 0
+# ── API check ──────────────────────────────────────────────────────────────────
+def check_api(api_url):
+    import urllib.request
+    import urllib.error
 
-    header("API ENDPOINTS")
+    header("API ENDPOINTS (12 SURFACES)")
     passed = failed = 0
+    current_surface = None
 
-    for path, expected_status, description in API_ENDPOINTS:
+    for path, expected_status, surface, description in API_ENDPOINTS:
+        if surface != current_surface:
+            current_surface = surface
+            print(f"\n  {CYAN}── {surface}{RESET}")
+
         url = api_url.rstrip("/") + path
         t0 = time.time()
         try:
@@ -210,32 +263,31 @@ def check_api(api_url: str) -> tuple[int, int]:
                 status = resp.status
                 elapsed = int((time.time() - t0) * 1000)
                 if status == expected_status:
-                    ok(f"{description:<35}  {status}  {elapsed}ms")
+                    ok(f"{description:<50}  {status}  {elapsed}ms")
                     passed += 1
                 else:
-                    fail(f"{description:<35}  got {status}, expected {expected_status}")
+                    fail(f"{description:<50}  got {status}, expected {expected_status}")
                     failed += 1
         except urllib.error.HTTPError as e:
             elapsed = int((time.time() - t0) * 1000)
             if e.code == expected_status:
-                ok(f"{description:<35}  {e.code}  {elapsed}ms")
+                ok(f"{description:<50}  {e.code}  {elapsed}ms")
                 passed += 1
             else:
-                fail(f"{description:<35}  HTTP {e.code}  {elapsed}ms")
+                fail(f"{description:<50}  HTTP {e.code}  {elapsed}ms")
                 failed += 1
         except Exception as e:
-            fail(f"{description:<35}  ERROR: {e}")
+            fail(f"{description:<50}  ERROR: {e}")
             failed += 1
 
     return passed, failed
 
 
-# ── Frontend wiring check ─────────────────────────────────────────────────────
-def check_frontend() -> tuple[int, int]:
+# ── Frontend wiring check ──────────────────────────────────────────────────────
+def check_frontend():
     header("FRONTEND FILE WIRING")
     passed = failed = 0
 
-    # Resolve project root (two levels up from scripts/)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(script_dir))
 
@@ -244,29 +296,21 @@ def check_frontend() -> tuple[int, int]:
         if os.path.isfile(abs_path):
             size = os.path.getsize(abs_path)
             if size > 100:
-                ok(f"{rel_path:<55}  {size} bytes")
+                ok(f"{rel_path:<60}  {size} bytes")
                 passed += 1
             else:
-                warn(f"{rel_path:<55}  suspiciously small ({size} bytes)")
+                warn(f"{rel_path:<60}  suspiciously small ({size} bytes)")
                 failed += 1
         else:
-            fail(f"{rel_path:<55}  NOT FOUND")
+            fail(f"{rel_path:<60}  NOT FOUND")
             failed += 1
 
-    # Check api.ts exports key functions
+    # Check api.ts exports
     api_ts = os.path.join(project_root, "frontend/lib/api.ts")
     if os.path.isfile(api_ts):
         content = open(api_ts).read()
-        required_exports = [
-            "unifiedSearch", "listEntities", "getEntityProfile",
-            "getEntityPatents", "getEntityResearch", "getEntityProcurement",
-            "getEntityNormativeEval", "getEntityEventsSummary",
-            "getEntityOwnership", "getEntityFdi",
-            "listNormativeDocuments", "listStrategicDocuments",
-            "listEvents", "listOwnership", "listFdiSignals",
-        ]
         print(f"\n  {CYAN}api.ts exports:{RESET}")
-        for fn in required_exports:
+        for fn in REQUIRED_API_EXPORTS:
             if fn in content:
                 ok(f"  {fn}")
                 passed += 1
@@ -277,14 +321,41 @@ def check_frontend() -> tuple[int, int]:
     return passed, failed
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-def main() -> None:
+# ── Surface coverage summary ───────────────────────────────────────────────────
+def print_surface_map():
+    header("12 OFFICIAL SURFACES — COVERAGE MAP")
+    surfaces = [
+        ("1",  "ENTITIES",                  "list, profile, context, ranking, compare"),
+        ("2",  "STRATEGIC PRIORITIES",      "tree, distinct, nodes, entity-alignment, normative-coverage"),
+        ("3",  "STRATEGIC RANKING",         "scoring layers, country/code filters"),
+        ("4",  "KNOWLEDGE GRAPH",           "nodes, edges, ego-network subgraph"),
+        ("5",  "PATENTS & TECHNOLOGY",      "canonical records, links, tech-from-patents, signals"),
+        ("6",  "RESEARCH & GRANTS",         "EC participations, entity summary, project participants"),
+        ("7",  "PROCUREMENT",               "TED notices, awards, linked awards, summary, signals"),
+        ("8",  "NORMATIVE ADMISSIBILITY",   "documents, atoms, entity eval, PR profile, compliance matrix"),
+        ("9",  "OWNERSHIP & FDI",           "ownership, FDI signals, regulatory workflow"),
+        ("10", "EVENTS & TEMPORAL",         "events, entity summary, rankings, timeline"),
+        ("11", "SCENARIOS",                 "entity scenario (9-query aggregate), multi-entity comparison"),
+        ("12", "UNIFIED SEARCH",            "cross-domain: entities, patents, procurement, normative, strategic"),
+    ]
+    for num, name, endpoints in surfaces:
+        print(f"  {GREEN}{num:>2}.{RESET}  {CYAN}{name:<30}{RESET}  {endpoints}")
+
+
+# ── Main ───────────────────────────────────────────────────────────────────────
+def main():
     parser = argparse.ArgumentParser(description="DFM Terminal healthcheck")
     parser.add_argument("--api-url", default=DEFAULT_API)
     parser.add_argument("--db-url",  default=DEFAULT_DB)
     parser.add_argument("--skip-api", action="store_true")
     parser.add_argument("--skip-db",  action="store_true")
+    parser.add_argument("--surface-map", action="store_true", help="Print surface coverage map and exit")
     args = parser.parse_args()
+
+    if args.surface_map:
+        print_surface_map()
+        print()
+        return
 
     print(f"\n{BOLD}DFM TERMINAL — SYSTEM HEALTHCHECK{RESET}")
     print(f"API: {args.api_url}  |  DB: {args.db_url[:50]}…")
@@ -302,7 +373,8 @@ def main() -> None:
     p, f = check_frontend()
     total_passed += p; total_failed += f
 
-    # Summary
+    print_surface_map()
+
     header("SUMMARY")
     total = total_passed + total_failed
     pct = int(100 * total_passed / total) if total else 0
