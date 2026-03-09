@@ -1,14 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
+  BackgroundVariant,
   type Node,
   type Edge,
-  BackgroundVariant,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useQuery } from "@tanstack/react-query";
@@ -21,28 +19,23 @@ const LAYOUT_GAP = 180;
 
 // node_label is the actual DB column name in v_dfm_graph_nodes_v1
 function layoutNodes(raw: ViewRow[]): Node[] {
-  return raw.map((n, i) => {
-    const col = i % 8;
-    const row = Math.floor(i / 8);
-    return {
-      id: String(n.node_id ?? i),
-      data: {
-        label: String(n.node_label ?? n.node_id ?? i),
-        type: String(n.node_type ?? "entity"),
-        ...n,
-      },
-      position: { x: col * LAYOUT_GAP, y: row * LAYOUT_GAP },
-      style: {
-        background: "#0f1629",
-        color: "#00d4ff",
-        border: "1px solid #1e3a5f",
-        borderRadius: 4,
-        fontSize: 11,
-        padding: "4px 8px",
-        fontFamily: "monospace",
-      },
-    };
-  });
+  return raw.map((n, i) => ({
+    id: String(n.node_id ?? i),
+    data: {
+      label: String(n.node_label ?? n.node_id ?? i),
+      node_type: String(n.node_type ?? "entity"),
+    },
+    position: { x: (i % 8) * LAYOUT_GAP, y: Math.floor(i / 8) * LAYOUT_GAP },
+    style: {
+      background: "#0f1629",
+      color: "#00d4ff",
+      border: "1px solid #1e3a5f",
+      borderRadius: 4,
+      fontSize: 11,
+      padding: "4px 8px",
+      fontFamily: "monospace",
+    },
+  }));
 }
 
 // from_id / to_id / edge_type are the actual DB column names in v_dfm_graph_edges_v3
@@ -69,7 +62,7 @@ export default function GraphPage() {
 
   const apply = () => {
     setSubmitted(entityFilter);
-    setMode(entityFilter ? "subgraph" : "global");
+    setMode(entityFilter.trim() ? "subgraph" : "global");
   };
 
   const clear = () => {
@@ -78,48 +71,52 @@ export default function GraphPage() {
     setMode("global");
   };
 
-  // Global mode: load all nodes + edges (capped)
+  // Global mode: all nodes + edges (capped)
   const { data: nodesData, isFetching: loadingNodes } = useQuery({
     queryKey: ["graph-nodes-global"],
     queryFn: () => getGraphNodes({ limit: 300 }),
     enabled: mode === "global",
+    staleTime: 60_000,
   });
 
   const { data: edgesData, isFetching: loadingEdges } = useQuery({
     queryKey: ["graph-edges-global"],
     queryFn: () => getGraphEdges({ limit: 600 }),
     enabled: mode === "global",
+    staleTime: 60_000,
   });
 
-  // Subgraph mode: ego-network for a specific entity
+  // Subgraph mode: ego-network around a specific entity
   const { data: subgraph, isFetching: loadingSubgraph } = useQuery({
     queryKey: ["graph-subgraph", submitted],
     queryFn: () => getEntitySubgraph(submitted, 300),
-    enabled: mode === "subgraph" && !!submitted,
+    enabled: mode === "subgraph" && submitted.trim().length > 0,
   });
 
-  const rawNodes: ViewRow[] =
-    mode === "subgraph"
-      ? (subgraph?.nodes ?? [])
-      : (nodesData?.nodes ?? []);
+  // Derive raw arrays — stable references from React Query, no ?? [] fallback needed
+  const rawNodes: ViewRow[] = mode === "subgraph"
+    ? (subgraph?.nodes ?? [])
+    : (nodesData?.nodes ?? []);
 
-  const rawEdges: ViewRow[] =
-    mode === "subgraph"
-      ? (subgraph?.edges ?? [])
-      : (edgesData?.edges ?? []);
+  const rawEdges: ViewRow[] = mode === "subgraph"
+    ? (subgraph?.edges ?? [])
+    : (edgesData?.edges ?? []);
 
-  const initialNodes = useMemo(() => layoutNodes(rawNodes), [rawNodes]);
-  const initialEdges = useMemo(() => buildEdges(rawEdges), [rawEdges]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  useEffect(() => setNodes(initialNodes), [initialNodes, setNodes]);
-  useEffect(() => setEdges(initialEdges), [initialEdges, setEdges]);
+  // Compute ReactFlow-ready arrays directly via useMemo.
+  // Do NOT use useNodesState/useEdgesState: those initialise from props once at
+  // mount (when data is still empty) and require an awkward useEffect sync that
+  // causes fitView to miss the final node positions.  Passing nodes/edges as
+  // controlled external state lets ReactFlow re-render and re-fit correctly.
+  const nodes: Node[] = useMemo(() => layoutNodes(rawNodes), [rawNodes]);
+  const edges: Edge[] = useMemo(() => buildEdges(rawEdges), [rawEdges]);
 
   const loading = loadingNodes || loadingEdges || loadingSubgraph;
-  const nodeCount = rawNodes.length;
-  const edgeCount = rawEdges.length;
+  const nodeCount = nodes.length;
+  const edgeCount = edges.length;
+
+  // Key changes whenever the data set changes so ReactFlow remounts and
+  // re-runs fitView on the actual node positions.
+  const flowKey = `${mode}-${nodeCount}-${edgeCount}`;
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -143,27 +140,42 @@ export default function GraphPage() {
         <button onClick={clear} className="text-terminal-dim text-xs hover:text-terminal-text">CLEAR</button>
         <div className="flex-1" />
         <span className="text-terminal-secondary text-xs">
-          {mode === "subgraph" ? `EGO · ${submitted}` : "GLOBAL"} · {nodeCount} nodes · {edgeCount} edges
+          {loading ? "LOADING…" : `${mode === "subgraph" ? `EGO · ${submitted}` : "GLOBAL"} · ${nodeCount} nodes · ${edgeCount} edges`}
         </span>
       </div>
 
       <div className="panel flex-1 overflow-hidden" style={{ minHeight: "calc(100vh - 280px)" }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          fitView
-          style={{ background: "#0a0e1a" }}
-        >
-          <Background color="#1e3a5f" gap={32} variant={BackgroundVariant.Dots} />
-          <Controls style={{ background: "#0f1629", border: "1px solid #1e3a5f", color: "#00d4ff" }} />
-          <MiniMap
-            style={{ background: "#0f1629", border: "1px solid #1e3a5f" }}
-            nodeColor="#00d4ff"
-            maskColor="rgba(10,14,26,0.8)"
-          />
-        </ReactFlow>
+        {loading && nodeCount === 0 ? (
+          <div className="flex items-center justify-center h-full text-terminal-orange text-xs animate-pulse tracking-widest">
+            LOADING GRAPH…
+          </div>
+        ) : nodeCount === 0 ? (
+          <div className="flex items-center justify-center h-full text-terminal-dim text-xs tracking-widest">
+            {mode === "subgraph" ? `NO GRAPH DATA FOR ${submitted}` : "NO GRAPH DATA"}
+          </div>
+        ) : (
+          <ReactFlow
+            key={flowKey}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={() => {}}
+            onEdgesChange={() => {}}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            style={{ background: "#0a0e1a" }}
+          >
+            <Background color="#1e3a5f" gap={32} variant={BackgroundVariant.Dots} />
+            <Controls style={{ background: "#0f1629", border: "1px solid #1e3a5f", color: "#00d4ff" }} />
+            <MiniMap
+              style={{ background: "#0f1629", border: "1px solid #1e3a5f" }}
+              nodeColor="#00d4ff"
+              maskColor="rgba(10,14,26,0.8)"
+            />
+          </ReactFlow>
+        )}
       </div>
 
       <StatusBar

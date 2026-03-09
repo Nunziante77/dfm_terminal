@@ -42,7 +42,12 @@ def list_procurement(
         params,
     )
     count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
-    count = run_query(db, f"SELECT COUNT(*) AS total FROM v_dfm_entity_procurement_ted_v1 WHERE {where}", count_params)
+    # Cap the count scan at 50 000 rows to avoid full-table scans on large views
+    count = run_query(
+        db,
+        f"SELECT COUNT(*) AS total FROM (SELECT 1 FROM v_dfm_entity_procurement_ted_v1 WHERE {where} LIMIT 50000) _c",
+        count_params,
+    )
     return {"data": rows, "total": count[0]["total"] if count else 0, "limit": limit, "offset": offset}
 
 
@@ -112,7 +117,12 @@ def list_linked_awards(
         params,
     )
     count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
-    count = run_query(db, f"SELECT COUNT(*) AS total FROM v_dfm_ted_awards_linked_v3 WHERE {where}", count_params)
+    # Cap the count scan at 50 000 rows to avoid full-table scans on large views
+    count = run_query(
+        db,
+        f"SELECT COUNT(*) AS total FROM (SELECT 1 FROM v_dfm_ted_awards_linked_v3 WHERE {where} LIMIT 50000) _c",
+        count_params,
+    )
     return {"data": rows, "total": count[0]["total"] if count else 0, "limit": limit, "offset": offset}
 
 

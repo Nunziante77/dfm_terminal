@@ -106,16 +106,29 @@ def get_priority_normative(
     db: Session = Depends(get_db),
 ):
     """
-    Normative documents that cover this strategic priority.
-    Uses v_normative_doc_pr_profile_v1.priority_code.
+    Normative documents covering this strategic priority.
+    v_normative_doc_pr_profile_v1 has: doc_id, priority_code, mapping_type,
+    total_atoms, pr_atoms, coverage_percent.
+    title/issuer/doc_type/published_date come from dfm_normative_documents via JOIN.
     """
     rows = run_query(
         db,
         """
-        SELECT doc_id, priority_code, title, issuer, doc_type, published_date
-        FROM v_normative_doc_pr_profile_v1
-        WHERE priority_code = :pr_id
-        ORDER BY published_date DESC NULLS LAST
+        SELECT
+            p.doc_id,
+            p.priority_code,
+            p.mapping_type,
+            p.total_atoms,
+            p.pr_atoms,
+            p.coverage_percent,
+            d.title,
+            d.issuer,
+            d.doc_type,
+            d.published_date
+        FROM v_normative_doc_pr_profile_v1 p
+        LEFT JOIN dfm_normative_documents d ON d.doc_id = p.doc_id
+        WHERE p.priority_code = :pr_id
+        ORDER BY p.coverage_percent DESC NULLS LAST
         LIMIT :limit
         """,
         {"pr_id": pr_id, "limit": limit},
