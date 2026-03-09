@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link2, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   getSupplyChainNetwork,
   getSupplyChainDependencies,
@@ -48,6 +49,7 @@ function RemainingBar({ pct }: { pct: unknown }) {
 }
 
 export default function SupplyChainPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("network");
   const [roleFilter, setRoleFilter] = useState("");
   const [techFilter, setTechFilter] = useState("");
@@ -258,8 +260,10 @@ export default function SupplyChainPage() {
                   return (
                     <tr
                       key={i}
+                      onClick={() => { if (row.entity_id) router.push(`/entities/${String(row.entity_id)}`); }}
                       className={[
                         "transition-colors",
+                        row.entity_id ? "cursor-pointer" : "",
                         isHighRisk ? "border-l-2 border-terminal-red bg-red-950/10" : "border-l-2 border-transparent",
                       ].join(" ")}
                     >

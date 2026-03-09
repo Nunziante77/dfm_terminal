@@ -1,5 +1,5 @@
 "use client";
-import { use, useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -83,8 +83,8 @@ function buildFlow(rawNodes: ViewRow[], rawEdges: ViewRow[]): { nodes: Node[]; e
   return { nodes, edges };
 }
 
-export default function EntityPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EntityPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("profile");
 
@@ -138,9 +138,15 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
 
   const loading = pLoading || cLoading || sLoading || gLoading || patLoading || resLoading || procLoading || normLoading || evLoading || owLoading || scLoading || techLoading;
 
-  const { nodes: flowNodes, edges: flowEdges } = buildFlow(subgraph?.nodes ?? [], subgraph?.edges ?? []);
-  const [nodes, , onNodesChange] = useNodesState(flowNodes);
-  const [edges, , onEdgesChange] = useEdgesState(flowEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  useEffect(() => {
+    if (subgraph) {
+      const { nodes: n, edges: e } = buildFlow(subgraph.nodes, subgraph.edges);
+      setNodes(n);
+      setEdges(e);
+    }
+  }, [subgraph, setNodes, setEdges]);
 
   const entityName = String(profile?.official_name ?? id);
 

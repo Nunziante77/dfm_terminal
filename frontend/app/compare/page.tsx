@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Plus, X, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeftRight, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { compareEntities } from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
+import EntityPicker, { type SelectedEntity } from "@/components/EntityPicker";
 import StatusBar from "@/components/StatusBar";
 
-// ── Curated field groups ────────────────────────────────────────────────────
+// ── Curated field definitions ─────────────────────────────────────────────
 
 type FieldDef = {
   key: string;
@@ -29,83 +30,76 @@ function score(v: unknown): React.ReactNode {
 
 function trl(v: unknown): React.ReactNode {
   if (v === null || v === undefined) return <span className="text-terminal-dim">—</span>;
-  return <span className="inline-block bg-terminal-muted text-terminal-cyan px-2 py-0.5 text-[10px] font-bold rounded-sm">{String(v)}</span>;
+  return (
+    <span className="inline-block bg-terminal-muted text-terminal-cyan px-2 py-0.5 text-[10px] font-bold rounded-sm">
+      {String(v)}
+    </span>
+  );
 }
 
 function fragility(v: unknown): React.ReactNode {
   const s = String(v ?? "").toUpperCase().trim();
-  if (!s || s === "NULL") return <span className="text-terminal-dim">—</span>;
+  if (!s || s === "NULL" || s === "UNDEFINED") return <span className="text-terminal-dim">—</span>;
   const cls =
     s === "HIGH"   ? "bg-red-950 text-terminal-red border-terminal-red" :
     s === "MEDIUM" ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
     s === "LOW"    ? "bg-green-950 text-terminal-green border-terminal-green" :
     "bg-terminal-muted text-terminal-secondary border-terminal-border";
-  return <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${cls}`}>{s}</span>;
+  return (
+    <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${cls}`}>
+      {s}
+    </span>
+  );
 }
 
-function regCount(v: unknown, type: "pass" | "fail"): React.ReactNode {
+function regPass(v: unknown): React.ReactNode {
   const n = Number(v ?? 0);
-  if (type === "pass")
-    return <span className={`font-mono ${n > 0 ? "text-terminal-green" : "text-terminal-dim"}`}>{n > 0 ? <><CheckCircle size={9} className="inline mr-1" />{n}</> : "—"}</span>;
-  return <span className={`font-mono ${n > 0 ? "text-terminal-red" : "text-terminal-dim"}`}>{n > 0 ? <><XCircle size={9} className="inline mr-1" />{n}</> : "—"}</span>;
+  if (!n) return <span className="text-terminal-dim">—</span>;
+  return <span className="font-mono text-terminal-green inline-flex items-center gap-1"><CheckCircle size={9} />{n}</span>;
+}
+
+function regFail(v: unknown): React.ReactNode {
+  const n = Number(v ?? 0);
+  if (!n) return <span className="text-terminal-dim">—</span>;
+  return <span className="font-mono text-terminal-red inline-flex items-center gap-1"><XCircle size={9} />{n}</span>;
 }
 
 function sanctions(v: unknown): React.ReactNode {
   const n = Number(v ?? 0);
   if (!n) return <span className="text-terminal-dim">—</span>;
-  return <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-terminal-red"><AlertTriangle size={10} />{n}</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-terminal-red">
+      <AlertTriangle size={10} />{n}
+    </span>
+  );
 }
 
 const FIELD_DEFS: FieldDef[] = [
-  // Identity
-  { key: "official_name",         label: "Name",               group: "IDENTITY" },
-  { key: "hq_country",            label: "HQ Country",         group: "IDENTITY" },
-  { key: "ownership_status",      label: "Ownership",          group: "IDENTITY" },
-  { key: "entity_type_code",      label: "Entity Type",        group: "IDENTITY" },
-  // Strategic
+  { key: "official_name",          label: "Name",               group: "IDENTITY" },
+  { key: "hq_country",             label: "HQ Country",         group: "IDENTITY" },
+  { key: "ownership_status",       label: "Ownership",          group: "IDENTITY" },
+  { key: "entity_type_code",       label: "Entity Type",        group: "IDENTITY" },
   { key: "primary_strategic_code", label: "Strategic Priority", group: "STRATEGIC" },
-  { key: "final_score",           label: "Final Score",        group: "STRATEGIC", render: score },
-  { key: "base_score",            label: "Base Score",         group: "STRATEGIC", render: score },
-  { key: "highest_trl",           label: "Highest TRL",        group: "STRATEGIC", render: trl },
-  // Operations
-  { key: "supported_op_count",    label: "Supported Ops",      group: "OPERATIONS" },
-  { key: "supported_tc_count",    label: "Supported Caps.",    group: "OPERATIONS" },
-  // Regulatory
-  { key: "reg_pass_count",        label: "Reg ✓ Pass",         group: "REGULATORY", render: (v) => regCount(v, "pass") },
-  { key: "reg_fail_count",        label: "Reg ✗ Fail",         group: "REGULATORY", render: (v) => regCount(v, "fail") },
-  // Risk
-  { key: "pr_fragility",          label: "PR Fragility",       group: "RISK",        render: fragility },
-  { key: "sanction_link_count",   label: "Sanctions",          group: "RISK",        render: sanctions },
-  // Market
-  { key: "buyer_contract_count",  label: "Contracts",          group: "MARKET" },
-  { key: "tech_count",            label: "Tech Domains",       group: "MARKET" },
+  { key: "final_score",            label: "Final Score",        group: "STRATEGIC", render: score },
+  { key: "base_score",             label: "Base Score",         group: "STRATEGIC", render: score },
+  { key: "highest_trl",            label: "Highest TRL",        group: "STRATEGIC", render: trl },
+  { key: "supported_op_count",     label: "Supported Ops",      group: "OPERATIONS" },
+  { key: "supported_tc_count",     label: "Supported Caps.",    group: "OPERATIONS" },
+  { key: "reg_pass_count",         label: "Reg ✓ Pass",         group: "REGULATORY", render: regPass },
+  { key: "reg_fail_count",         label: "Reg ✗ Fail",         group: "REGULATORY", render: regFail },
+  { key: "pr_fragility",           label: "PR Fragility",       group: "RISK",        render: fragility },
+  { key: "sanction_link_count",    label: "Sanctions",          group: "RISK",        render: sanctions },
+  { key: "buyer_contract_count",   label: "Contracts",          group: "MARKET" },
+  { key: "tech_count",             label: "Tech Domains",       group: "MARKET" },
 ];
 
 const GROUPS = ["IDENTITY", "STRATEGIC", "OPERATIONS", "REGULATORY", "RISK", "MARKET"];
 
-// ── Column header ───────────────────────────────────────────────────────────
-
-function ColHeader({ name, entityId, onRemove }: { name: string; entityId: string; onRemove: () => void }) {
-  const router = useRouter();
-  return (
-    <div className="flex items-center justify-between px-3 py-2 border-b border-terminal-border">
-      <button
-        onClick={() => router.push(`/entities/${entityId}`)}
-        className="text-terminal-cyan text-xs font-bold tracking-wider hover:underline truncate max-w-[80%]"
-      >
-        {name}
-      </button>
-      <button onClick={onRemove} className="text-terminal-dim hover:text-terminal-red shrink-0 ml-1">
-        <X size={11} />
-      </button>
-    </div>
-  );
-}
-
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ComparePage() {
-  const [inputs, setInputs] = useState<string[]>(["", ""]);
+  const router = useRouter();
+  const [selected, setSelected] = useState<SelectedEntity[]>([]);
   const [submitted, setSubmitted] = useState<string[]>([]);
 
   const { data, isFetching, error } = useQuery({
@@ -114,15 +108,13 @@ export default function ComparePage() {
     enabled: submitted.length >= 2,
   });
 
-  const handleSubmit = () => {
-    const valid = inputs.filter((i) => i.trim());
-    if (valid.length >= 2) setSubmitted(valid);
+  const handleCompare = () => {
+    if (selected.length >= 2) setSubmitted(selected.map((s) => s.id));
   };
 
-  const removeEntity = (entityId: string) => {
-    const next = submitted.filter((id) => id !== entityId);
-    setSubmitted(next);
-    setInputs(next.length >= 2 ? [...next, ""] : next);
+  const handleClear = () => {
+    setSelected([]);
+    setSubmitted([]);
   };
 
   // Build merged data keyed by entity_id
@@ -140,59 +132,48 @@ export default function ComparePage() {
     if (id) entityMap[id] = { ...(entityMap[id] ?? {}), ...r };
   });
 
-  const entityIds = data?.entity_ids ?? [];
-  const presentIds = entityIds.filter((id) => entityMap[id]);
+  // Use submitted IDs for column order, filtered to those with data
+  const colIds = submitted.length > 0
+    ? submitted.filter((id) => entityMap[id])
+    : [];
+
+  // Resolve display name: prefer picker name, fall back to entityMap
+  const nameFor = (id: string) => {
+    const picked = selected.find((s) => s.id === id);
+    return picked?.name ?? String(entityMap[id]?.official_name ?? id);
+  };
 
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="flex items-center gap-3">
         <ArrowLeftRight size={16} className="text-terminal-cyan" />
         <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">MULTI-ENTITY COMPARISON</h1>
-        <span className="text-terminal-dim text-xs">{presentIds.length > 0 ? `${presentIds.length} entities` : ""}</span>
+        <span className="text-terminal-dim text-xs">{colIds.length > 0 ? `${colIds.length} entities` : ""}</span>
       </div>
 
-      {/* Input */}
-      <div className="panel p-3 flex flex-wrap gap-2 items-center">
-        {inputs.map((val, i) => (
-          <div key={i} className="flex items-center gap-1">
-            <input
-              value={val}
-              onChange={(e) => {
-                const next = [...inputs];
-                next[i] = e.target.value;
-                setInputs(next);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder={`Entity ID ${i + 1}`}
-              className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-36 placeholder:text-terminal-dim"
-            />
-            {inputs.length > 2 && (
-              <button onClick={() => setInputs((p) => p.filter((_, idx) => idx !== i))} className="text-terminal-dim hover:text-terminal-red">
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        ))}
-        {inputs.length < 10 && (
-          <button onClick={() => setInputs((p) => [...p, ""])} className="text-terminal-cyan hover:text-white">
-            <Plus size={14} />
-          </button>
-        )}
-        <button
-          onClick={handleSubmit}
-          disabled={inputs.filter((i) => i.trim()).length < 2}
-          className="ml-2 text-xs text-terminal-cyan border border-terminal-cyan px-3 py-1.5 hover:bg-terminal-muted disabled:opacity-30 transition-colors"
-        >
-          COMPARE
-        </button>
-        {submitted.length > 0 && (
+      {/* Entity selector */}
+      <div className="panel p-3">
+        <div className="text-terminal-secondary text-[10px] tracking-widest mb-2">SELECT ENTITIES TO COMPARE (2–10)</div>
+        <EntityPicker
+          selected={selected}
+          onChange={setSelected}
+          max={10}
+          placeholder="Search entity by name…"
+        />
+        <div className="flex items-center gap-3 mt-3">
           <button
-            onClick={() => { setSubmitted([]); setInputs(["", ""]); }}
-            className="text-terminal-dim text-xs hover:text-terminal-text"
+            onClick={handleCompare}
+            disabled={selected.length < 2}
+            className="text-xs text-terminal-cyan border border-terminal-cyan px-4 py-1.5 hover:bg-terminal-muted disabled:opacity-30 transition-colors tracking-wider"
           >
-            CLEAR
+            COMPARE {selected.length >= 2 ? `(${selected.length})` : ""}
           </button>
-        )}
+          {(selected.length > 0 || submitted.length > 0) && (
+            <button onClick={handleClear} className="text-terminal-dim text-xs hover:text-terminal-text">
+              CLEAR ALL
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -200,28 +181,27 @@ export default function ComparePage() {
       )}
 
       {/* Curated comparison grid */}
-      {data && presentIds.length > 0 && (
+      {colIds.length > 0 && (
         <div className="flex-1 overflow-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr>
-                {/* Field label column */}
-                <th className="sticky left-0 z-10 bg-terminal-panel border-b border-r border-terminal-border px-3 py-2 text-left text-[10px] text-terminal-dim tracking-widest w-32 min-w-32">
+                <th className="sticky left-0 z-10 bg-terminal-panel border-b border-r border-terminal-border px-3 py-2 text-left text-[10px] text-terminal-dim tracking-widest w-36 min-w-36">
                   FIELD
                 </th>
-                {presentIds.map((id) => {
-                  const row = entityMap[id] ?? {};
-                  const name = String(row.official_name ?? id);
-                  return (
-                    <th key={id} className="bg-terminal-panel border-b border-r border-terminal-border px-0 py-0 min-w-40">
-                      <ColHeader
-                        name={name}
-                        entityId={id}
-                        onRemove={() => removeEntity(id)}
-                      />
-                    </th>
-                  );
-                })}
+                {colIds.map((id) => (
+                  <th key={id} className="bg-terminal-panel border-b border-r border-terminal-border px-0 py-0 min-w-44">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <button
+                        onClick={() => router.push(`/entities/${id}`)}
+                        className="text-terminal-cyan text-xs font-bold tracking-wider hover:underline truncate max-w-[80%] text-left"
+                        title={nameFor(id)}
+                      >
+                        {nameFor(id)}
+                      </button>
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -231,24 +211,28 @@ export default function ComparePage() {
                   <>
                     <tr key={`group-${group}`}>
                       <td
-                        colSpan={presentIds.length + 1}
+                        colSpan={colIds.length + 1}
                         className="sticky left-0 bg-terminal-muted px-3 py-1 text-[9px] text-terminal-cyan tracking-widest border-b border-terminal-border"
                       >
                         {group}
                       </td>
                     </tr>
                     {groupFields.map((field) => {
-                      const values = presentIds.map((id) => entityMap[id]?.[field.key]);
-                      // Highlight if values differ across entities
+                      const values = colIds.map((id) => entityMap[id]?.[field.key]);
                       const uniq = new Set(values.map((v) => String(v ?? "")));
                       const diverges = uniq.size > 1 && !values.every((v) => v === null || v === undefined);
                       return (
-                        <tr key={field.key} className={`border-b border-terminal-muted ${diverges ? "bg-terminal-panel" : ""}`}>
-                          <td className={`sticky left-0 px-3 py-2 text-terminal-secondary whitespace-nowrap border-r border-terminal-border ${diverges ? "bg-terminal-panel" : "bg-terminal-bg"}`}>
+                        <tr
+                          key={field.key}
+                          className={`border-b border-terminal-muted ${diverges ? "bg-terminal-panel" : ""}`}
+                        >
+                          <td
+                            className={`sticky left-0 px-3 py-2 text-terminal-secondary whitespace-nowrap border-r border-terminal-border ${diverges ? "bg-terminal-panel" : "bg-terminal-bg"}`}
+                          >
                             {field.label}
                             {diverges && <span className="ml-1 text-[8px] text-terminal-orange">≠</span>}
                           </td>
-                          {presentIds.map((id) => {
+                          {colIds.map((id) => {
                             const v = entityMap[id]?.[field.key];
                             return (
                               <td key={id} className="px-3 py-2 border-r border-terminal-muted font-mono">
@@ -267,13 +251,22 @@ export default function ComparePage() {
         </div>
       )}
 
-      {!data && !isFetching && (
+      {submitted.length === 0 && !isFetching && (
         <div className="flex-1 flex items-center justify-center text-terminal-dim text-xs tracking-widest">
-          ENTER ENTITY IDs TO COMPARE
+          SEARCH AND SELECT ENTITIES ABOVE, THEN PRESS COMPARE
         </div>
       )}
 
-      <StatusBar loading={isFetching} message={presentIds.length > 0 ? `COMPARE · ${presentIds.length} ENTITIES` : "COMPARE"} />
+      {isFetching && (
+        <div className="flex-1 flex items-center justify-center text-terminal-orange text-xs animate-pulse tracking-widest">
+          LOADING…
+        </div>
+      )}
+
+      <StatusBar
+        loading={isFetching}
+        message={colIds.length > 0 ? `COMPARE · ${colIds.length} ENTITIES` : "COMPARE"}
+      />
     </div>
   );
 }

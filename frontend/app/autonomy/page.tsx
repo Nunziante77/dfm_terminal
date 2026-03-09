@@ -7,10 +7,56 @@ import {
   getAutonomyGaps,
   getAutonomyDependencies,
 } from "@/lib/api";
+import type { ViewRow } from "@/lib/types";
 import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
 
 type Tab = "index" | "gaps" | "dependencies";
+
+// ── Narrative rendering ──────────────────────────────────────────────────────
+
+function AutonomyFlagPill({ value }: { value: unknown }) {
+  const v = String(value ?? "").toUpperCase().trim();
+  if (!v || v === "NULL" || v === "UNDEFINED" || v === "—") {
+    return <span className="text-terminal-dim text-[10px]">—</span>;
+  }
+  const styles =
+    v === "CRITICAL"   ? "bg-red-950 text-terminal-red border-terminal-red" :
+    v === "VULNERABLE" ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
+    v === "RESILIENT"  ? "bg-green-950 text-terminal-green border-terminal-green" :
+    v === "DEPENDENT"  ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
+    "bg-terminal-muted text-terminal-secondary border-terminal-border";
+  return (
+    <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${styles}`}>
+      {v}
+    </span>
+  );
+}
+
+function EuBalance({ eu, nonEu }: { eu: unknown; nonEu: unknown }) {
+  const e = Number(eu ?? 0);
+  const n = Number(nonEu ?? 0);
+  if (!e && !n) return <span className="text-terminal-dim text-[10px]">—</span>;
+  const total = e + n;
+  const euPct = total > 0 ? (e / total) * 100 : 0;
+  const nonEuPct = total > 0 ? (n / total) * 100 : 0;
+  const nonEuDominates = n > e;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-terminal-green font-mono text-[10px]">{e} EU</span>
+      <span className="text-terminal-dim text-[10px]">/</span>
+      <span className={`font-mono text-[10px] ${nonEuDominates ? "text-terminal-orange font-bold" : "text-terminal-secondary"}`}>
+        {n} Non-EU
+      </span>
+      <span className="w-14 h-1.5 bg-terminal-muted rounded-sm overflow-hidden inline-flex">
+        <span className="h-full bg-terminal-green" style={{ width: `${euPct}%` }} />
+        <span className={`h-full ${nonEuDominates ? "bg-terminal-orange" : "bg-terminal-secondary"}`} style={{ width: `${nonEuPct}%` }} />
+      </span>
+    </span>
+  );
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
 
 export default function AutonomyPage() {
   const [tab, setTab] = useState<Tab>("gaps");
@@ -29,10 +75,7 @@ export default function AutonomyPage() {
 
   const { data: index, isFetching: indexLoading } = useQuery({
     queryKey: ["autonomy-index", applied.scenario, applied.pr],
-    queryFn: () => getAutonomyIndex({
-      scenario_code: applied.scenario || undefined,
-      pr_code: applied.pr || undefined,
-    }),
+    queryFn: () => getAutonomyIndex({ scenario_code: applied.scenario || undefined, pr_code: applied.pr || undefined }),
     enabled: tab === "index",
     staleTime: 60_000,
   });
@@ -50,10 +93,7 @@ export default function AutonomyPage() {
 
   const { data: deps, isFetching: depsLoading } = useQuery({
     queryKey: ["autonomy-deps", applied.scenario, applied.pr],
-    queryFn: () => getAutonomyDependencies({
-      scenario_code: applied.scenario || undefined,
-      pr_code: applied.pr || undefined,
-    }),
+    queryFn: () => getAutonomyDependencies({ scenario_code: applied.scenario || undefined, pr_code: applied.pr || undefined }),
     enabled: tab === "dependencies",
     staleTime: 60_000,
   });
@@ -65,6 +105,11 @@ export default function AutonomyPage() {
     { key: "dependencies", label: "EU vs NON-EU" },
     { key: "index",        label: "CONCENTRATION INDEX" },
   ];
+
+  const rowCount =
+    tab === "gaps" ? (gaps?.total ?? 0) :
+    tab === "dependencies" ? (deps?.total ?? 0) :
+    (index?.total ?? 0);
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -92,19 +137,23 @@ export default function AutonomyPage() {
           placeholder="Priority code…"
           className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-36 placeholder:text-terminal-dim"
         />
-        <input
-          value={flagFilter}
-          onChange={(e) => setFlagFilter(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && apply()}
-          placeholder="Autonomy flag…"
-          className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-36 placeholder:text-terminal-dim"
-        />
+        {tab === "gaps" && (
+          <select
+            value={flagFilter}
+            onChange={(e) => setFlagFilter(e.target.value)}
+            className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-2 py-1.5 outline-none"
+          >
+            <option value="">All flags</option>
+            <option value="CRITICAL">CRITICAL</option>
+            <option value="VULNERABLE">VULNERABLE</option>
+            <option value="DEPENDENT">DEPENDENT</option>
+            <option value="RESILIENT">RESILIENT</option>
+          </select>
+        )}
         <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
         <button onClick={clear} className="text-terminal-dim text-xs hover:text-terminal-text">CLEAR</button>
         <div className="flex-1" />
-        <span className="text-terminal-secondary text-xs">
-          {loading ? "LOADING…" : tab.toUpperCase()}
-        </span>
+        <span className="text-terminal-secondary text-xs">{rowCount.toLocaleString()} rows</span>
       </div>
 
       {/* Tabs */}
@@ -127,12 +176,44 @@ export default function AutonomyPage() {
       {/* Content */}
       <div className="panel flex-1 overflow-auto">
         {tab === "gaps" && (
-          <DataTable
-            data={gaps?.data ?? []}
-            columns={["scenario_code", "pr_code", "eu_entities_remaining", "non_eu_entities_remaining", "autonomy_flag"]}
-            maxHeight="calc(100vh - 320px)"
-          />
+          gapsLoading ? (
+            <div className="flex items-center justify-center h-32 text-terminal-orange text-xs animate-pulse tracking-widest">LOADING…</div>
+          ) : (gaps?.data ?? []).length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-terminal-dim text-xs tracking-widest">NO DATA</div>
+          ) : (
+            <table className="dfm-table w-full">
+              <thead>
+                <tr>
+                  <th>Scenario</th>
+                  <th>Priority Code</th>
+                  <th>Autonomy Flag</th>
+                  <th>EU vs Non-EU Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(gaps?.data ?? []).map((row: ViewRow, i: number) => {
+                  const flag = String(row.autonomy_flag ?? "").toUpperCase();
+                  const isCritical = flag === "CRITICAL" || flag === "VULNERABLE";
+                  return (
+                    <tr
+                      key={i}
+                      className={[
+                        "transition-colors",
+                        isCritical ? "border-l-2 border-terminal-orange" : "border-l-2 border-transparent",
+                      ].join(" ")}
+                    >
+                      <td className="font-mono text-[10px] text-terminal-dim">{String(row.scenario_code ?? "—")}</td>
+                      <td className="font-mono text-terminal-cyan">{String(row.pr_code ?? "—")}</td>
+                      <td><AutonomyFlagPill value={row.autonomy_flag} /></td>
+                      <td><EuBalance eu={row.eu_entities_remaining} nonEu={row.non_eu_entities_remaining} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
         )}
+
         {tab === "dependencies" && (
           <DataTable
             data={deps?.data ?? []}
@@ -140,6 +221,7 @@ export default function AutonomyPage() {
             maxHeight="calc(100vh - 320px)"
           />
         )}
+
         {tab === "index" && (
           <DataTable
             data={index?.data ?? []}
@@ -151,11 +233,7 @@ export default function AutonomyPage() {
 
       <StatusBar
         loading={loading}
-        message={`AUTONOMY · ${tab.toUpperCase()} · ${
-          tab === "gaps" ? (gaps?.total ?? 0) :
-          tab === "dependencies" ? (deps?.total ?? 0) :
-          (index?.total ?? 0)
-        } rows`}
+        message={`AUTONOMY · ${tab.toUpperCase()} · ${rowCount.toLocaleString()} rows`}
       />
     </div>
   );
