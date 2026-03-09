@@ -11,7 +11,7 @@ function EntityColumn({ profile, ranking }: { profile: ViewRow; ranking: ViewRow
     ...profile,
     ...(ranking ?? {}),
   };
-  const entityName = String(profile.entity_name ?? profile.name ?? profile.entity_id ?? "Entity");
+  const entityName = String(profile.official_name ?? profile.entity_id ?? "Entity");
 
   return (
     <div className="panel flex-1 min-w-48 overflow-auto">
