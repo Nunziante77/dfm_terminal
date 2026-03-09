@@ -60,7 +60,7 @@ export const getEntityRanking = (id: string) =>
   get<ViewRow>(`/entities/${id}/ranking`);
 
 export const compareEntities = (ids: string[]) =>
-  get<{ profiles: ViewRow[]; rankings: ViewRow[]; tech_from_patents: ViewRow[]; entity_ids: string[] }>(
+  get<{ profiles: ViewRow[]; rankings: ViewRow[]; tech_from_patents: ViewRow[]; screener: ViewRow[]; entity_ids: string[] }>(
     "/entities/compare/multi",
     { ids: ids.join(",") }
   );
@@ -176,6 +176,12 @@ export const getStrategicDocument = (docId: string) =>
 export const listStrategicAtoms = (params?: { doc_id?: string; atom_type?: string; capability_domain?: string; confidence_level?: string; limit?: number; offset?: number }) =>
   get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/strategic/atoms", params as Record<string, string | number>);
 
+export const listCapabilityDomains = () =>
+  get<{ data: ViewRow[]; total: number }>("/strategic/capability-domains");
+
+export const getStrategicAtomEntities = (capability_domain: string, limit = 50) =>
+  get<{ data: ViewRow[]; total: number; capability_domain: string }>("/strategic/atoms/entities", { capability_domain, limit });
+
 // ── Events ────────────────────────────────────────────────────────────────────
 export const listEvents = (params?: { limit?: number; offset?: number; entity_id?: string; event_type?: string; country_code?: string; event_source?: string }) =>
   get<PaginatedResponse>("/events", params as Record<string, string | number>);
@@ -207,8 +213,11 @@ export const getEntityScenario = (entityId: string) =>
   get<ScenarioResponse>(`/scenario/entity/${entityId}`);
 
 // ── Compliance ────────────────────────────────────────────────────────────────
-export const listCompliance = (params?: { limit?: number; offset?: number; eval_status?: string; doc_id?: string }) =>
+export const listCompliance = (params?: { limit?: number; offset?: number; eval_status?: string; doc_id?: string; entity_id?: string }) =>
   get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/compliance", params as Record<string, string | number>);
+
+export const getComplianceSummary = (entity_id: string) =>
+  get<{ entity_id: string; pass_count: number; fail_count: number; unknown_count: number; total_count: number }>("/compliance/summary", { entity_id });
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 export const getTimeline = (params?: { entity_id?: string; event_type?: string; country_code?: string; limit?: number; offset?: number }) =>
@@ -226,6 +235,9 @@ export const getSupplyChainDependencies = (params?: { supply_chain_role?: string
 
 export const getSupplyChainCentrality = (params?: { supply_chain_role?: string; search?: string; limit?: number; offset?: number }) =>
   get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/supply-chain/centrality", params as Record<string, string | number>);
+
+export const getSupplyChainFragility = (params?: { pr_code?: string; scenario_code?: string; pr_fragility?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/supply-chain/fragility", params as Record<string, string | number>);
 
 export const getEntitySupplyChain = (entityId: string, limit = 100) =>
   get<{ entity_id: string; supply_chain: ViewRow[]; tech_map: ViewRow[]; supply_chain_count: number }>(`/supply-chain/entity/${entityId}`, { limit });

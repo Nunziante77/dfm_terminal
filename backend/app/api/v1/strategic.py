@@ -86,6 +86,53 @@ def get_strategic_document(doc_id: str, db: Session = Depends(get_db)):
     return {"document": doc[0], "atoms": atoms}
 
 
+@router.get("/capability-domains")
+def list_capability_domains(db: Session = Depends(get_db)):
+    """Distinct capability_domain values from dfm_strategic_atoms."""
+    rows = run_query(
+        db,
+        """
+        SELECT capability_domain, COUNT(*) AS atom_count
+        FROM dfm_strategic_atoms
+        WHERE capability_domain IS NOT NULL AND capability_domain <> ''
+        GROUP BY capability_domain
+        ORDER BY atom_count DESC
+        """,
+    )
+    return {"data": rows, "total": len(rows)}
+
+
+@router.get("/atoms/entities")
+def get_atoms_entities(
+    capability_domain: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """
+    Entities linked to a capability domain via v_dfm_entity_tech_union_v1.
+    Matches dfm_tech_code against capability_domain using ILIKE.
+    Falls back to v_dfm_rank_with_scoring_layers_v3 primary_strategic_code if no tech match.
+    """
+    if not capability_domain:
+        return {"data": [], "total": 0, "capability_domain": None}
+
+    rows = run_query(
+        db,
+        """
+        SELECT DISTINCT t.entity_id, r.official_name, r.headquarters_country_iso2,
+               r.primary_strategic_code, r.final_score, r.highest_trl,
+               r.supported_op_count, t.dfm_tech_code
+        FROM v_dfm_entity_tech_union_v1 t
+        JOIN v_dfm_rank_with_scoring_layers_v3 r ON r.entity_id = t.entity_id
+        WHERE t.dfm_tech_code ILIKE :domain
+        ORDER BY r.final_score DESC NULLS LAST
+        LIMIT :limit
+        """,
+        {"domain": f"%{capability_domain}%", "limit": limit},
+    )
+    return {"data": rows, "total": len(rows), "capability_domain": capability_domain}
+
+
 @router.get("/atoms")
 def list_strategic_atoms(
     doc_id: str | None = Query(None),

@@ -93,7 +93,23 @@ def compare_entities(
         """,
         params,
     )
-    return {"profiles": profiles, "rankings": rankings, "tech_from_patents": tech, "entity_ids": id_list}
+    screener = run_query(
+        db,
+        f"""
+        SELECT entity_id, reg_pass_count, reg_fail_count, sanction_link_count,
+               buyer_contract_count, pr_fragility, tech_count, hhi_structural
+        FROM v_dfm_bloomberg_screener_v3
+        WHERE entity_id IN ({placeholders})
+        """,
+        params,
+    )
+    return {
+        "profiles": profiles,
+        "rankings": rankings,
+        "tech_from_patents": tech,
+        "screener": screener,
+        "entity_ids": id_list,
+    }
 
 
 @router.get("/{entity_id}/profile")

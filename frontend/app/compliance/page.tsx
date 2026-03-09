@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Shield, ChevronLeft, ChevronRight, CheckCircle, XCircle, HelpCircle } from "lucide-react";
-import { listCompliance, getNormativePrProfile } from "@/lib/api";
+import { listCompliance, getNormativePrProfile, getComplianceSummary } from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
 import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
@@ -56,13 +56,19 @@ export default function CompliancePage() {
     enabled: tab === "matrix",
   });
 
+  const { data: summary, isFetching: sFetching } = useQuery({
+    queryKey: ["compliance-summary", submitted.entityId],
+    queryFn: () => getComplianceSummary(submitted.entityId),
+    enabled: tab === "matrix" && !!submitted.entityId,
+  });
+
   const { data: prProfile, isFetching: pFetching } = useQuery({
     queryKey: ["normative-pr-profile", submittedPr],
     queryFn: () => getNormativePrProfile({ priority_code: submittedPr || undefined, limit: 200 }),
     enabled: tab === "priority",
   });
 
-  const loading = mFetching || pFetching;
+  const loading = mFetching || pFetching || sFetching;
   const total = matrix?.total ?? 0;
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pages = Math.ceil(total / PAGE_SIZE) || 1;
@@ -133,6 +139,23 @@ export default function CompliancePage() {
             <div className="flex-1" />
             <span className="text-terminal-secondary text-xs">{total.toLocaleString()} evaluations</span>
           </div>
+
+          {/* Summary panel — visible when entity_id is submitted */}
+          {submitted.entityId && summary && (
+            <div className="grid grid-cols-4 gap-px bg-terminal-border border border-terminal-border shrink-0">
+              {[
+                { label: "TOTAL EVALS",   value: summary.total_count?.toLocaleString() ?? "—", cls: "text-terminal-secondary" },
+                { label: "PASS",          value: summary.pass_count?.toLocaleString() ?? "—",  cls: "text-terminal-green" },
+                { label: "FAIL",          value: summary.fail_count?.toLocaleString() ?? "—",  cls: summary.fail_count ? "text-terminal-red" : "text-terminal-secondary" },
+                { label: "UNKNOWN",       value: summary.unknown_count?.toLocaleString() ?? "—", cls: "text-terminal-dim" },
+              ].map(({ label, value, cls }) => (
+                <div key={label} className="bg-terminal-panel px-4 py-2">
+                  <div className="text-[9px] text-terminal-dim tracking-widest mb-0.5">{label}</div>
+                  <div className={`text-sm font-mono font-bold ${cls}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {mError && (
             <div className="text-terminal-red text-xs panel px-4 py-3">ERROR: {String(mError)}</div>

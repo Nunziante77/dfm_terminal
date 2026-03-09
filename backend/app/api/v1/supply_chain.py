@@ -130,6 +130,51 @@ def get_supply_chain_centrality(
     return {"data": rows, "total": count[0]["total"] if count else 0, "limit": limit, "offset": offset}
 
 
+@router.get("/fragility")
+def get_supply_chain_fragility(
+    pr_code: str | None = Query(None),
+    scenario_code: str | None = Query(None),
+    pr_fragility: str | None = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    """Priority-level supply chain fragility from v_dfm_pr_full_supply_chain_enriched_v2."""
+    conditions = ["1=1"]
+    params: dict = {"limit": limit, "offset": offset}
+
+    if pr_code:
+        conditions.append("pr_code ILIKE :pr_code")
+        params["pr_code"] = f"%{pr_code}%"
+    if scenario_code:
+        conditions.append("scenario_code ILIKE :scenario_code")
+        params["scenario_code"] = f"%{scenario_code}%"
+    if pr_fragility:
+        conditions.append("pr_fragility ILIKE :pr_fragility")
+        params["pr_fragility"] = f"%{pr_fragility}%"
+
+    where = " AND ".join(conditions)
+    rows = run_query(
+        db,
+        f"""
+        SELECT pr_code, entity_id, tech_code, scenario_code,
+               pr_fragility, tech_fragility, tech_remaining_percent
+        FROM v_dfm_pr_full_supply_chain_enriched_v2
+        WHERE {where}
+        ORDER BY pr_fragility DESC NULLS LAST, tech_remaining_percent ASC NULLS LAST
+        LIMIT :limit OFFSET :offset
+        """,
+        params,
+    )
+    count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
+    count = run_query(
+        db,
+        f"SELECT COUNT(*) AS total FROM (SELECT 1 FROM v_dfm_pr_full_supply_chain_enriched_v2 WHERE {where} LIMIT 50000) _c",
+        count_params,
+    )
+    return {"data": rows, "total": count[0]["total"] if count else 0, "limit": limit, "offset": offset}
+
+
 @router.get("/entity/{entity_id}")
 def get_entity_supply_chain(
     entity_id: str,
