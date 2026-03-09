@@ -1,14 +1,24 @@
 "use client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { Cpu, ChevronRight } from "lucide-react";
-import { getDistinctPriorities, getPriorityNodes } from "@/lib/api";
+import {
+  getDistinctPriorities,
+  getPriorityNodes,
+  getPriorityEntities,
+  getPriorityNormative,
+} from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
 import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
 
+type DetailTab = "nodes" | "entities" | "normative";
+
 export default function PrioritiesPage() {
+  const router = useRouter();
   const [selectedPrId, setSelectedPrId] = useState<string | undefined>();
+  const [detailTab, setDetailTab] = useState<DetailTab>("nodes");
 
   const { data: distinct, isFetching: loadingDistinct } = useQuery({
     queryKey: ["priorities-distinct"],
@@ -18,8 +28,36 @@ export default function PrioritiesPage() {
   const { data: nodes, isFetching: loadingNodes } = useQuery({
     queryKey: ["priority-nodes", selectedPrId],
     queryFn: () => getPriorityNodes(selectedPrId!),
-    enabled: !!selectedPrId,
+    enabled: !!selectedPrId && detailTab === "nodes",
   });
+
+  const { data: entities, isFetching: loadingEntities } = useQuery({
+    queryKey: ["priority-entities", selectedPrId],
+    queryFn: () => getPriorityEntities(selectedPrId!),
+    enabled: !!selectedPrId && detailTab === "entities",
+  });
+
+  const { data: normative, isFetching: loadingNormative } = useQuery({
+    queryKey: ["priority-normative", selectedPrId],
+    queryFn: () => getPriorityNormative(selectedPrId!),
+    enabled: !!selectedPrId && detailTab === "normative",
+  });
+
+  const loading = loadingDistinct || loadingNodes || loadingEntities || loadingNormative;
+
+  const DETAIL_TABS: { key: DetailTab; label: string }[] = [
+    { key: "nodes",    label: "TREE NODES" },
+    { key: "entities", label: "ALIGNED ENTITIES" },
+    { key: "normative", label: "NORMATIVE COVERAGE" },
+  ];
+
+  const handleEntityRow = (row: ViewRow) => {
+    if (row.entity_id) router.push(`/entities/${row.entity_id}`);
+  };
+
+  const handleNormativeRow = (row: ViewRow) => {
+    if (row.doc_id) router.push(`/normative/${row.doc_id}`);
+  };
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -30,7 +68,7 @@ export default function PrioritiesPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-4 flex-1 overflow-hidden">
-        {/* Priority list */}
+        {/* Left: priority list */}
         <div className="panel overflow-auto">
           <div className="px-3 py-2 border-b border-terminal-border text-terminal-cyan text-xs tracking-widest">
             PRIORITIES ({distinct?.total ?? 0})
@@ -38,52 +76,113 @@ export default function PrioritiesPage() {
           {loadingDistinct && (
             <div className="px-3 py-4 text-terminal-orange text-xs animate-pulse">LOADING…</div>
           )}
-          {distinct?.data.map((row: ViewRow, i: number) => {
+          {distinct?.data.map((row: ViewRow) => {
             const id = String(row.pr_id ?? "");
             return (
               <div
-                key={i}
-                onClick={() => setSelectedPrId(id)}
-                className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-b border-terminal-muted transition-colors ${
+                key={id}
+                onClick={() => { setSelectedPrId(id); setDetailTab("nodes"); }}
+                className={`flex items-start gap-2 px-3 py-2 text-xs cursor-pointer border-b border-terminal-muted transition-colors ${
                   selectedPrId === id
                     ? "bg-terminal-muted text-terminal-cyan border-l-2 border-terminal-cyan"
                     : "text-terminal-secondary hover:bg-terminal-muted hover:text-terminal-text border-l-2 border-transparent"
                 }`}
               >
-                <ChevronRight size={10} className="shrink-0 text-terminal-dim" />
-                <span className="font-mono">{id || "—"}</span>
+                <ChevronRight size={10} className="shrink-0 text-terminal-dim mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono font-bold">{id || "—"}</div>
+                  <div className="text-terminal-dim mt-0.5 flex gap-3">
+                    {row.node_count != null && (
+                      <span>{String(row.node_count)} nodes</span>
+                    )}
+                    {row.entity_count != null && (
+                      <span className="text-terminal-cyan">{String(row.entity_count)} entities</span>
+                    )}
+                    {row.normative_doc_count != null && (
+                      <span className="text-terminal-orange">{String(row.normative_doc_count)} docs</span>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Nodes for selected priority */}
+        {/* Right: detail panel */}
         <div className="col-span-2 panel overflow-hidden flex flex-col">
-          <div className="px-3 py-2 border-b border-terminal-border flex items-center justify-between">
-            <span className="text-terminal-cyan text-xs tracking-widest">
-              {selectedPrId ? `NODES · ${selectedPrId}` : "SELECT A PRIORITY"}
-            </span>
+          {/* Detail header */}
+          <div className="border-b border-terminal-border">
+            <div className="px-3 py-2 flex items-center justify-between">
+              <span className="text-terminal-cyan text-xs tracking-widest">
+                {selectedPrId ? selectedPrId : "SELECT A PRIORITY"}
+              </span>
+              {selectedPrId && (
+                <button
+                  onClick={() => setSelectedPrId(undefined)}
+                  className="text-terminal-dim text-xs hover:text-terminal-text"
+                >
+                  ✕ CLEAR
+                </button>
+              )}
+            </div>
             {selectedPrId && (
-              <button onClick={() => setSelectedPrId(undefined)}
-                className="text-terminal-dim text-xs hover:text-terminal-text">✕ CLEAR</button>
+              <div className="flex border-t border-terminal-muted">
+                {DETAIL_TABS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setDetailTab(key)}
+                    className={`px-4 py-1.5 text-xs tracking-wider border-b-2 transition-colors ${
+                      detailTab === key
+                        ? "border-terminal-cyan text-terminal-cyan"
+                        : "border-transparent text-terminal-secondary hover:text-terminal-text"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
+
           {!selectedPrId && (
             <div className="flex-1 flex items-center justify-center text-terminal-dim text-xs tracking-widest">
               SELECT A PRIORITY ON THE LEFT
             </div>
           )}
-          {selectedPrId && (
+
+          {selectedPrId && detailTab === "nodes" && (
             <DataTable
               data={nodes?.data ?? []}
               columns={["pr_id", "node_id", "node_level"]}
-              maxHeight="calc(100vh - 240px)"
+              maxHeight="calc(100vh - 280px)"
+            />
+          )}
+
+          {selectedPrId && detailTab === "entities" && (
+            <DataTable
+              data={entities?.data ?? []}
+              columns={[
+                "entity_id", "official_name", "headquarters_country_iso2",
+                "primary_strategic_code", "final_score", "highest_trl",
+                "supported_op_count", "supported_tc_count",
+              ]}
+              onRowClick={handleEntityRow}
+              maxHeight="calc(100vh - 280px)"
+            />
+          )}
+
+          {selectedPrId && detailTab === "normative" && (
+            <DataTable
+              data={normative?.data ?? []}
+              columns={["doc_id", "priority_code", "title", "issuer", "doc_type", "published_date"]}
+              onRowClick={handleNormativeRow}
+              maxHeight="calc(100vh - 280px)"
             />
           )}
         </div>
       </div>
 
-      <StatusBar loading={loadingDistinct || loadingNodes} message="PRIORITIES" />
+      <StatusBar loading={loading} message={selectedPrId ? `PRIORITIES · ${selectedPrId}` : "PRIORITIES"} />
     </div>
   );
 }

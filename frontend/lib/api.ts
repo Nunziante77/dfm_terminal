@@ -93,6 +93,12 @@ export const getDistinctPriorities = () =>
 export const getPriorityNodes = (pr_id: string) =>
   get<{ data: ViewRow[]; total: number; pr_id: string }>(`/priorities/${pr_id}/nodes`);
 
+export const getPriorityEntities = (pr_id: string, limit = 200) =>
+  get<{ data: ViewRow[]; total: number; pr_id: string }>(`/priorities/${pr_id}/entities`, { limit });
+
+export const getPriorityNormative = (pr_id: string) =>
+  get<{ data: ViewRow[]; total: number; pr_id: string }>(`/priorities/${pr_id}/normative`);
+
 // ── Patents ───────────────────────────────────────────────────────────────────
 export const listPatents = (params?: { limit?: number; offset?: number; family_id?: string }) =>
   get<PaginatedResponse>("/patents", params as Record<string, string | number>);

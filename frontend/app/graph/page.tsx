@@ -13,20 +13,21 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useQuery } from "@tanstack/react-query";
 import { GitBranch } from "lucide-react";
-import { getGraphNodes, getGraphEdges } from "@/lib/api";
+import { getGraphNodes, getGraphEdges, getEntitySubgraph } from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
 import StatusBar from "@/components/StatusBar";
 
 const LAYOUT_GAP = 180;
 
+// node_label is the actual DB column name in v_dfm_graph_nodes_v1
 function layoutNodes(raw: ViewRow[]): Node[] {
   return raw.map((n, i) => {
     const col = i % 8;
     const row = Math.floor(i / 8);
     return {
-      id: String(n.node_id ?? n.id ?? i),
+      id: String(n.node_id ?? i),
       data: {
-        label: String(n.label ?? n.entity_name ?? n.name ?? n.node_id ?? i),
+        label: String(n.node_label ?? n.node_id ?? i),
         type: String(n.node_type ?? "entity"),
         ...n,
       },
@@ -44,40 +45,71 @@ function layoutNodes(raw: ViewRow[]): Node[] {
   });
 }
 
+// from_id / to_id / edge_type are the actual DB column names in v_dfm_graph_edges_v3
 function buildEdges(raw: ViewRow[]): Edge[] {
-  return raw.map((e, i) => ({
-    id: String(e.edge_id ?? i),
-    source: String(e.source_id ?? e.source ?? ""),
-    target: String(e.target_id ?? e.target ?? ""),
-    label: String(e.relationship_type ?? e.label ?? ""),
-    animated: false,
-    style: { stroke: "#1e3a5f", strokeWidth: 1 },
-    labelStyle: { fill: "#94a3b8", fontSize: 10, fontFamily: "monospace" },
-  }));
+  return raw
+    .filter((e) => e.from_id && e.to_id)
+    .map((e, i) => ({
+      id: String(e.edge_id ?? i),
+      source: String(e.from_id),
+      target: String(e.to_id),
+      label: String(e.edge_type ?? ""),
+      animated: false,
+      style: { stroke: "#1e3a5f", strokeWidth: 1 },
+      labelStyle: { fill: "#94a3b8", fontSize: 10, fontFamily: "monospace" },
+    }));
 }
+
+type Mode = "global" | "subgraph";
 
 export default function GraphPage() {
   const [entityFilter, setEntityFilter] = useState("");
   const [submitted, setSubmitted] = useState("");
+  const [mode, setMode] = useState<Mode>("global");
 
+  const apply = () => {
+    setSubmitted(entityFilter);
+    setMode(entityFilter ? "subgraph" : "global");
+  };
+
+  const clear = () => {
+    setEntityFilter("");
+    setSubmitted("");
+    setMode("global");
+  };
+
+  // Global mode: load all nodes + edges (capped)
   const { data: nodesData, isFetching: loadingNodes } = useQuery({
-    queryKey: ["graph-nodes", submitted],
-    queryFn: () => getGraphNodes({ entity_id: submitted || undefined, limit: 300 }),
+    queryKey: ["graph-nodes-global"],
+    queryFn: () => getGraphNodes({ limit: 300 }),
+    enabled: mode === "global",
   });
 
   const { data: edgesData, isFetching: loadingEdges } = useQuery({
-    queryKey: ["graph-edges", submitted],
-    queryFn: () => getGraphEdges({ source_id: submitted || undefined, limit: 600 }),
+    queryKey: ["graph-edges-global"],
+    queryFn: () => getGraphEdges({ limit: 600 }),
+    enabled: mode === "global",
   });
 
-  const initialNodes = useMemo(
-    () => layoutNodes(nodesData?.nodes ?? []),
-    [nodesData]
-  );
-  const initialEdges = useMemo(
-    () => buildEdges(edgesData?.edges ?? []),
-    [edgesData]
-  );
+  // Subgraph mode: ego-network for a specific entity
+  const { data: subgraph, isFetching: loadingSubgraph } = useQuery({
+    queryKey: ["graph-subgraph", submitted],
+    queryFn: () => getEntitySubgraph(submitted, 300),
+    enabled: mode === "subgraph" && !!submitted,
+  });
+
+  const rawNodes: ViewRow[] =
+    mode === "subgraph"
+      ? (subgraph?.nodes ?? [])
+      : (nodesData?.nodes ?? []);
+
+  const rawEdges: ViewRow[] =
+    mode === "subgraph"
+      ? (subgraph?.edges ?? [])
+      : (edgesData?.edges ?? []);
+
+  const initialNodes = useMemo(() => layoutNodes(rawNodes), [rawNodes]);
+  const initialEdges = useMemo(() => buildEdges(rawEdges), [rawEdges]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -85,7 +117,9 @@ export default function GraphPage() {
   useEffect(() => setNodes(initialNodes), [initialNodes, setNodes]);
   useEffect(() => setEdges(initialEdges), [initialEdges, setEdges]);
 
-  const loading = loadingNodes || loadingEdges;
+  const loading = loadingNodes || loadingEdges || loadingSubgraph;
+  const nodeCount = rawNodes.length;
+  const edgeCount = rawEdges.length;
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -97,34 +131,22 @@ export default function GraphPage() {
         </span>
       </div>
 
-      {/* Filter */}
       <div className="panel p-3 flex items-center gap-3">
         <input
           value={entityFilter}
           onChange={(e) => setEntityFilter(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && setSubmitted(entityFilter)}
-          placeholder="Filter by entity ID… (Enter to apply)"
-          className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-64 placeholder:text-terminal-dim"
+          onKeyDown={(e) => e.key === "Enter" && apply()}
+          placeholder="Entity ID for ego-network… (blank = global view)"
+          className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-72 placeholder:text-terminal-dim"
         />
-        <button
-          onClick={() => setSubmitted(entityFilter)}
-          className="text-terminal-cyan text-xs hover:text-white transition-colors"
-        >
-          APPLY
-        </button>
-        <button
-          onClick={() => { setEntityFilter(""); setSubmitted(""); }}
-          className="text-terminal-dim text-xs hover:text-terminal-text transition-colors"
-        >
-          CLEAR
-        </button>
+        <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
+        <button onClick={clear} className="text-terminal-dim text-xs hover:text-terminal-text">CLEAR</button>
         <div className="flex-1" />
         <span className="text-terminal-secondary text-xs">
-          {nodesData?.count ?? 0} nodes · {edgesData?.count ?? 0} edges
+          {mode === "subgraph" ? `EGO · ${submitted}` : "GLOBAL"} · {nodeCount} nodes · {edgeCount} edges
         </span>
       </div>
 
-      {/* React Flow canvas */}
       <div className="panel flex-1 overflow-hidden" style={{ minHeight: "calc(100vh - 280px)" }}>
         <ReactFlow
           nodes={nodes}
@@ -144,7 +166,10 @@ export default function GraphPage() {
         </ReactFlow>
       </div>
 
-      <StatusBar loading={loading} message={`GRAPH · ${nodesData?.count ?? 0} nodes · ${edgesData?.count ?? 0} edges`} />
+      <StatusBar
+        loading={loading}
+        message={`GRAPH · ${nodeCount} nodes · ${edgeCount} edges${mode === "subgraph" ? ` · EGO: ${submitted}` : ""}`}
+      />
     </div>
   );
 }

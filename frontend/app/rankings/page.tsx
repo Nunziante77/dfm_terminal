@@ -13,10 +13,21 @@ const PAGE_SIZE = 100;
 export default function RankingsPage() {
   const router = useRouter();
   const [offset, setOffset] = useState(0);
+  const [prCode, setPrCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [submitted, setSubmitted] = useState({ prCode: "", country: "" });
+
+  const apply = () => { setSubmitted({ prCode, country }); setOffset(0); };
 
   const { data, isFetching, error } = useQuery({
-    queryKey: ["rankings", offset],
-    queryFn: () => getRankings(PAGE_SIZE, offset),
+    queryKey: ["rankings", offset, submitted],
+    queryFn: () =>
+      getRankings({
+        limit: PAGE_SIZE,
+        offset,
+        primary_strategic_code: submitted.prCode || undefined,
+        country: submitted.country || undefined,
+      }),
   });
 
   const handleRow = (row: ViewRow) => {
@@ -33,9 +44,37 @@ export default function RankingsPage() {
       <div className="flex items-center gap-3">
         <Layers size={16} className="text-terminal-cyan" />
         <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">
-          RANKINGS & SCORING LAYERS
+          STRATEGIC RANKING
         </h1>
         <span className="text-terminal-dim text-xs">v_dfm_rank_with_scoring_layers_v3</span>
+      </div>
+
+      <div className="panel p-3 flex flex-wrap gap-3 items-center">
+        <input
+          value={prCode}
+          onChange={(e) => setPrCode(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && apply()}
+          placeholder="Strategic code (PR-…)"
+          className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-40 placeholder:text-terminal-dim"
+        />
+        <input
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && apply()}
+          placeholder="Country ISO2…"
+          className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-3 py-1.5 outline-none w-28 placeholder:text-terminal-dim"
+        />
+        <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
+        {(submitted.prCode || submitted.country) && (
+          <button
+            onClick={() => { setPrCode(""); setCountry(""); setSubmitted({ prCode: "", country: "" }); setOffset(0); }}
+            className="text-terminal-dim text-xs hover:text-terminal-text"
+          >
+            CLEAR
+          </button>
+        )}
+        <div className="flex-1" />
+        <span className="text-terminal-secondary text-xs">{total.toLocaleString()} entities</span>
       </div>
 
       {error && (
@@ -45,11 +84,22 @@ export default function RankingsPage() {
       )}
 
       <div className="panel flex-1 overflow-hidden">
-        <DataTable data={data?.data ?? []} onRowClick={handleRow} maxHeight="calc(100vh - 220px)" />
+        <DataTable
+          data={data?.data ?? []}
+          onRowClick={handleRow}
+          maxHeight="calc(100vh - 270px)"
+          columns={[
+            "entity_id", "official_name", "headquarters_country_iso2",
+            "primary_strategic_code", "final_score", "base_score",
+            "strategic_weight_multiplier", "trl_modifier", "industrial_modifier",
+            "regulatory_modifier", "capital_modifier", "depth_modifier",
+            "highest_trl", "supported_op_count", "supported_tc_count",
+          ]}
+        />
       </div>
 
       <div className="flex items-center justify-between">
-        <StatusBar loading={isFetching} message={`${total} rows · RANKINGS`} />
+        <StatusBar loading={isFetching} message={`${total} entities · STRATEGIC RANKING`} />
         <div className="flex items-center gap-2 pr-2">
           <button onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0}
             className="text-terminal-cyan disabled:opacity-30">
