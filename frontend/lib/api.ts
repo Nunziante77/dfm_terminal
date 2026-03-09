@@ -207,3 +207,49 @@ export const getTimeline = (params?: { entity_id?: string; event_type?: string; 
 
 export const getEntityTimeline = (entityId: string) =>
   get<{ data: ViewRow[]; entity_id: string; total: number }>(`/timeline/entity/${entityId}`);
+
+// ── Supply Chain ───────────────────────────────────────────────────────────────
+export const getSupplyChainNetwork = (params?: { supply_chain_role?: string; dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/supply-chain/network", params as Record<string, string | number>);
+
+export const getSupplyChainDependencies = (params?: { supply_chain_role?: string; dfm_tech_code?: string; search?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/supply-chain/dependencies", params as Record<string, string | number>);
+
+export const getSupplyChainCentrality = (params?: { supply_chain_role?: string; search?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/supply-chain/centrality", params as Record<string, string | number>);
+
+export const getEntitySupplyChain = (entityId: string, limit = 100) =>
+  get<{ entity_id: string; supply_chain: ViewRow[]; tech_map: ViewRow[]; supply_chain_count: number }>(`/supply-chain/entity/${entityId}`, { limit });
+
+// ── Technology ────────────────────────────────────────────────────────────────
+export const getTechnologyClusters = (params?: { dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/technology/clusters", params as Record<string, string | number>);
+
+export const getTechnologyConcentration = (params?: { scenario_code?: string; pr_code?: string; limit?: number }) =>
+  get<{ data: ViewRow[]; total: number }>("/technology/concentration", params as Record<string, string | number>);
+
+export const getTechnologyVulnerabilities = (params?: { country_code?: string; dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/technology/vulnerabilities", params as Record<string, string | number>);
+
+export const getEntityTechnology = (entityId: string, limit = 100) =>
+  get<{ entity_id: string; tech_domains: ViewRow[]; tech_count: number }>(`/technology/entity/${entityId}`, { limit });
+
+// ── Strategic Autonomy ────────────────────────────────────────────────────────
+export const getAutonomyIndex = (params?: { scenario_code?: string; pr_code?: string; limit?: number }) =>
+  get<{ data: ViewRow[]; total: number }>("/autonomy/index", params as Record<string, string | number>);
+
+export const getAutonomyGaps = (params?: { scenario_code?: string; pr_code?: string; autonomy_flag?: string; limit?: number }) =>
+  get<{ data: ViewRow[]; total: number }>("/autonomy/gaps", params as Record<string, string | number>);
+
+export const getAutonomyDependencies = (params?: { scenario_code?: string; pr_code?: string; limit?: number }) =>
+  get<{ data: ViewRow[]; total: number }>("/autonomy/dependencies", params as Record<string, string | number>);
+
+// ── Capabilities ──────────────────────────────────────────────────────────────
+export const getCapabilityDemand = (params?: { dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/capabilities/demand", params as Record<string, string | number>);
+
+export const getCapabilityGaps = (params?: { supply_chain_role?: string; dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/capabilities/gaps", params as Record<string, string | number>);
+
+export const getCapabilitiesByTechnology = (params?: { country_code?: string; dfm_tech_code?: string; limit?: number; offset?: number }) =>
+  get<{ data: ViewRow[]; total: number; limit: number; offset: number }>("/capabilities/by-technology", params as Record<string, string | number>);

@@ -16,6 +16,10 @@ from app.api.v1 import (
     scenario,
     compliance,
     timeline,
+    supply_chain,
+    technology,
+    autonomy,
+    capabilities,
 )
 
 router = APIRouter()
@@ -36,3 +40,7 @@ router.include_router(ownership.router)
 router.include_router(scenario.router)
 router.include_router(compliance.router)
 router.include_router(timeline.router)
+router.include_router(supply_chain.router)
+router.include_router(technology.router)
+router.include_router(autonomy.router)
+router.include_router(capabilities.router)

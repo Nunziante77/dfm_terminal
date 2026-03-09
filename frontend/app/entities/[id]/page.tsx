@@ -14,6 +14,7 @@ import {
   getEntitySubgraph, getEntityPatents, getEntityTechFromPatents,
   getEntityResearch, getEntityProcurement, getEntityNormativeEval,
   getEntityEventsSummary, getEntityOwnership, getEntityFdi,
+  getEntitySupplyChain, getEntityTechnology,
 } from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
 import MetricCard from "@/components/MetricCard";
@@ -22,20 +23,23 @@ import StatusBar from "@/components/StatusBar";
 
 type Tab =
   | "profile" | "context" | "ranking" | "graph" | "scenario"
-  | "patents" | "research" | "procurement" | "normative" | "events" | "ownership";
+  | "patents" | "research" | "procurement" | "normative" | "events" | "ownership"
+  | "supply_chain" | "technology";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "profile",    label: "PROFILE",    icon: <Building2 size={11} /> },
-  { key: "context",   label: "CONTEXT",    icon: <FileText size={11} /> },
-  { key: "ranking",   label: "RANKING",    icon: <BarChart2 size={11} /> },
-  { key: "scenario",  label: "SCENARIO",   icon: <Activity size={11} /> },
-  { key: "patents",   label: "PATENTS",    icon: <FlaskConical size={11} /> },
-  { key: "research",  label: "RESEARCH",   icon: <BookOpen size={11} /> },
-  { key: "procurement",label: "PROCURE",  icon: <ShoppingCart size={11} /> },
-  { key: "normative", label: "NORMATIVE",  icon: <Shield size={11} /> },
-  { key: "events",    label: "EVENTS",     icon: <Calendar size={11} /> },
-  { key: "ownership", label: "OWNERSHIP",  icon: <Globe2 size={11} /> },
-  { key: "graph",     label: "GRAPH",      icon: <GitBranch size={11} /> },
+  { key: "profile",      label: "PROFILE",      icon: <Building2 size={11} /> },
+  { key: "context",      label: "CONTEXT",      icon: <FileText size={11} /> },
+  { key: "ranking",      label: "RANKING",      icon: <BarChart2 size={11} /> },
+  { key: "scenario",     label: "SCENARIO",     icon: <Activity size={11} /> },
+  { key: "patents",      label: "PATENTS",      icon: <FlaskConical size={11} /> },
+  { key: "research",     label: "RESEARCH",     icon: <BookOpen size={11} /> },
+  { key: "procurement",  label: "PROCURE",      icon: <ShoppingCart size={11} /> },
+  { key: "normative",    label: "NORMATIVE",    icon: <Shield size={11} /> },
+  { key: "events",       label: "EVENTS",       icon: <Calendar size={11} /> },
+  { key: "ownership",    label: "OWNERSHIP",    icon: <Globe2 size={11} /> },
+  { key: "supply_chain", label: "SUPPLY CHAIN", icon: <GitBranch size={11} /> },
+  { key: "technology",   label: "TECH EXPOSURE",icon: <FlaskConical size={11} /> },
+  { key: "graph",        label: "GRAPH",        icon: <GitBranch size={11} /> },
 ];
 
 function KVGrid({ data }: { data: ViewRow }) {
@@ -125,13 +129,20 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
   const { data: fdi } = useQuery({
     queryKey: ["entity-fdi", id], queryFn: () => getEntityFdi(id), enabled: enabled("ownership"),
   });
+  const { data: supplyChain, isLoading: scLoading } = useQuery({
+    queryKey: ["entity-supply-chain", id], queryFn: () => getEntitySupplyChain(id), enabled: enabled("supply_chain"),
+  });
+  const { data: techExposure, isLoading: techLoading } = useQuery({
+    queryKey: ["entity-technology", id], queryFn: () => getEntityTechnology(id), enabled: enabled("technology"),
+  });
+
+  const loading = pLoading || cLoading || sLoading || gLoading || patLoading || resLoading || procLoading || normLoading || evLoading || owLoading || scLoading || techLoading;
 
   const { nodes: flowNodes, edges: flowEdges } = buildFlow(subgraph?.nodes ?? [], subgraph?.edges ?? []);
   const [nodes, , onNodesChange] = useNodesState(flowNodes);
   const [edges, , onEdgesChange] = useEdgesState(flowEdges);
 
   const entityName = String(profile?.official_name ?? id);
-  const loading = pLoading || cLoading || sLoading || gLoading || patLoading || resLoading || procLoading || normLoading || evLoading || owLoading;
 
   if (pError) {
     return (
@@ -401,6 +412,58 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
               </div>
             </div>
           )
+        )}
+
+        {tab === "supply_chain" && (
+          scLoading ? <LoadingMsg /> : supplyChain ? (
+            <div className="flex flex-col gap-3">
+              <div className="panel">
+                <div className="px-3 py-2 border-b border-terminal-border text-terminal-cyan text-xs tracking-widest">
+                  SUPPLY CHAIN ROLES ({supplyChain.supply_chain_count})
+                </div>
+                <DataTable
+                  data={supplyChain.supply_chain}
+                  columns={["supply_chain_role", "dfm_tech_code", "contracts", "procurement_value"]}
+                  maxHeight="200px"
+                />
+              </div>
+              {supplyChain.tech_map.length > 0 && (
+                <div className="panel">
+                  <div className="px-3 py-2 border-b border-terminal-border text-terminal-cyan text-xs tracking-widest">
+                    TECHNOLOGY MAP ({supplyChain.tech_map.length})
+                  </div>
+                  <DataTable
+                    data={supplyChain.tech_map}
+                    columns={["dfm_tech_code", "supply_chain_role", "procurement_total", "contracts"]}
+                    maxHeight="calc(100vh - 500px)"
+                  />
+                </div>
+              )}
+            </div>
+          ) : <EmptyMsg />
+        )}
+
+        {tab === "technology" && (
+          techLoading ? <LoadingMsg /> : techExposure ? (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="panel px-3 py-2">
+                  <div className="text-[9px] text-terminal-secondary tracking-widest mb-0.5">TECH DOMAINS</div>
+                  <div className="text-terminal-cyan font-semibold text-sm">{techExposure.tech_count}</div>
+                </div>
+              </div>
+              <div className="panel">
+                <div className="px-3 py-2 border-b border-terminal-border text-terminal-cyan text-xs tracking-widest">
+                  TECHNOLOGY EXPOSURE — v_dfm_entity_tech_union_v1
+                </div>
+                <DataTable
+                  data={techExposure.tech_domains}
+                  columns={["dfm_tech_code", "patent_count", "source_layer"]}
+                  maxHeight="calc(100vh - 380px)"
+                />
+              </div>
+            </div>
+          ) : <EmptyMsg />
         )}
 
         {tab === "graph" && (

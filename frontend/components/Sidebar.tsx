@@ -18,6 +18,8 @@ import {
   Globe2,
   Calendar,
   Activity,
+  Link2,
+  Target,
 } from "lucide-react";
 
 type NavSection = {
@@ -60,6 +62,15 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/events",     label: "EVENTS",      icon: Calendar,      shortcut: "V" },
       { href: "/timeline",   label: "TIMELINE",    icon: Clock,         shortcut: "T" },
+    ],
+  },
+  {
+    section: "STRATEGIC INTELLIGENCE",
+    items: [
+      { href: "/supply-chain", label: "SUPPLY CHAIN",  icon: Link2,   shortcut: "U" },
+      { href: "/technology",   label: "TECHNOLOGY",    icon: Cpu,     shortcut: "Y" },
+      { href: "/autonomy",     label: "AUTONOMY",      icon: Shield,  shortcut: "M" },
+      { href: "/capabilities", label: "CAPABILITIES",  icon: Target,  shortcut: "B" },
     ],
   },
 ];

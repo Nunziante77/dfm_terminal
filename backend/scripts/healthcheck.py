@@ -51,6 +51,18 @@ REQUIRED_DB_OBJECTS = [
     "v_entity_ownership_aggregated_v2",
     "v_entity_fdi_signal_v1",
     "v_fdi_regulatory_workflow_final",
+    # Strategic Intelligence
+    "v_dfm_defence_supply_chain_v3",
+    "v_dfm_defence_supply_chain_signal_v1",
+    "v_dfm_supply_chain_classifier_v2",
+    "v_dfm_defence_supply_chain_map_v2",
+    "v_dfm_defence_technology_market_v3",
+    "v_dfm_defence_technology_demand_by_country_v2",
+    "v_dfm_pr_concentration_index_v2",
+    "v_dfm_entity_tech_union_v1",
+    "v_dfm_pr_autonomy_gap_flags_v1",
+    "v_dfm_pr_autonomy_gap_v1",
+    "v_dfm_procurement_supply_chain_v4",
 ]
 
 # ── API endpoints to probe ─────────────────────────────────────────────────────
@@ -119,6 +131,28 @@ API_ENDPOINTS = [
 
     # Surface 12 — Unified Search
     ("/api/v1/search?q=a&limit=1",                    200, "SEARCH",       "Unified search"),
+
+    # Surface 13 — Supply Chain Intelligence
+    ("/api/v1/supply-chain/network?limit=1",          200, "SUPPLY CHAIN", "Supply chain network"),
+    ("/api/v1/supply-chain/dependencies?limit=1",     200, "SUPPLY CHAIN", "Supply chain dependencies"),
+    ("/api/v1/supply-chain/centrality?limit=1",       200, "SUPPLY CHAIN", "Supply chain centrality"),
+    ("/api/v1/supply-chain/entity/TEST-ENTITY",       200, "SUPPLY CHAIN", "Entity supply chain (empty OK)"),
+
+    # Surface 14 — Technology Landscape
+    ("/api/v1/technology/clusters?limit=1",           200, "TECHNOLOGY",   "Technology clusters"),
+    ("/api/v1/technology/concentration?limit=1",      200, "TECHNOLOGY",   "Technology concentration"),
+    ("/api/v1/technology/vulnerabilities?limit=1",    200, "TECHNOLOGY",   "Technology vulnerabilities"),
+    ("/api/v1/technology/entity/TEST-ENTITY",         200, "TECHNOLOGY",   "Entity technology (empty OK)"),
+
+    # Surface 15 — Strategic Autonomy
+    ("/api/v1/autonomy/index?limit=1",                200, "AUTONOMY",     "Autonomy index"),
+    ("/api/v1/autonomy/gaps?limit=1",                 200, "AUTONOMY",     "Autonomy gaps"),
+    ("/api/v1/autonomy/dependencies?limit=1",         200, "AUTONOMY",     "Autonomy dependencies"),
+
+    # Surface 16 — Capability Demand
+    ("/api/v1/capabilities/demand?limit=1",           200, "CAPABILITIES", "Capability demand"),
+    ("/api/v1/capabilities/gaps?limit=1",             200, "CAPABILITIES", "Capability gaps"),
+    ("/api/v1/capabilities/by-technology?limit=1",    200, "CAPABILITIES", "Capabilities by technology"),
 ]
 
 # Frontend files to verify exist and are non-trivial
@@ -145,6 +179,11 @@ FRONTEND_PAGE_FILES = [
     # Temporal
     "frontend/app/events/page.tsx",
     "frontend/app/timeline/page.tsx",
+    # Strategic Intelligence
+    "frontend/app/supply-chain/page.tsx",
+    "frontend/app/technology/page.tsx",
+    "frontend/app/autonomy/page.tsx",
+    "frontend/app/capabilities/page.tsx",
     # Detail
     "frontend/app/entities/[id]/page.tsx",
     # Shell
@@ -187,6 +226,14 @@ REQUIRED_API_EXPORTS = [
     "getEntityScenario",
     # Compliance / Timeline
     "listCompliance", "getTimeline",
+    # Supply Chain
+    "getSupplyChainNetwork", "getSupplyChainDependencies", "getSupplyChainCentrality", "getEntitySupplyChain",
+    # Technology
+    "getTechnologyClusters", "getTechnologyConcentration", "getTechnologyVulnerabilities", "getEntityTechnology",
+    # Autonomy
+    "getAutonomyIndex", "getAutonomyGaps", "getAutonomyDependencies",
+    # Capabilities
+    "getCapabilityDemand", "getCapabilityGaps", "getCapabilitiesByTechnology",
 ]
 
 # ── Colour helpers ─────────────────────────────────────────────────────────────
@@ -337,6 +384,10 @@ def print_surface_map():
         ("10", "EVENTS & TEMPORAL",         "events, entity summary, rankings, timeline"),
         ("11", "SCENARIOS",                 "entity scenario (9-query aggregate), multi-entity comparison"),
         ("12", "UNIFIED SEARCH",            "cross-domain: entities, patents, procurement, normative, strategic"),
+        ("13", "SUPPLY CHAIN INTELLIGENCE", "network by role/tech, entity-level exposure, centrality classification"),
+        ("14", "TECHNOLOGY LANDSCAPE",      "tech clusters, concentration index (HHI), country demand map"),
+        ("15", "STRATEGIC AUTONOMY",        "autonomy gaps, EU vs non-EU distribution, concentration index"),
+        ("16", "CAPABILITY DEMAND",         "demand by tech, supply chain gaps, country-tech breakdown"),
     ]
     for num, name, endpoints in surfaces:
         print(f"  {GREEN}{num:>2}.{RESET}  {CYAN}{name:<30}{RESET}  {endpoints}")
