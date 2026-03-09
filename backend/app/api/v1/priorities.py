@@ -96,7 +96,28 @@ def get_priority_entities(
         """,
         {"pr_id": pr_id, "limit": limit},
     )
-    return {"data": rows, "total": len(rows), "pr_id": pr_id}
+    # Concentration index for this priority (first scenario row)
+    concentration = run_query(
+        db,
+        "SELECT hhi_structural, entity_count FROM v_dfm_pr_concentration_index_v2 WHERE pr_code = :pr_id LIMIT 1",
+        {"pr_id": pr_id},
+    )
+    # Autonomy gap flags for this priority (first scenario row)
+    autonomy = run_query(
+        db,
+        "SELECT autonomy_flag, eu_entities_remaining, non_eu_entities_remaining FROM v_dfm_pr_autonomy_gap_flags_v1 WHERE pr_code = :pr_id LIMIT 1",
+        {"pr_id": pr_id},
+    )
+    return {
+        "data": rows,
+        "total": len(rows),
+        "pr_id": pr_id,
+        "hhi_structural": concentration[0]["hhi_structural"] if concentration else None,
+        "concentration_entity_count": concentration[0]["entity_count"] if concentration else None,
+        "autonomy_flag": autonomy[0]["autonomy_flag"] if autonomy else None,
+        "eu_entities_remaining": autonomy[0]["eu_entities_remaining"] if autonomy else None,
+        "non_eu_entities_remaining": autonomy[0]["non_eu_entities_remaining"] if autonomy else None,
+    }
 
 
 @router.get("/{pr_id}/normative")

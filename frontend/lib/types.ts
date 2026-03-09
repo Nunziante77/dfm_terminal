@@ -92,6 +92,8 @@ export interface ScenarioResponse {
   events: ViewRow | null;
   graph_connectivity: { edge_count: number };
   normative_compliance: ViewRow | null;
+  supply_chain: ViewRow | null;
+  autonomy: ViewRow | null;
 }
 
 // ── Normative ─────────────────────────────────────────────────────────────────

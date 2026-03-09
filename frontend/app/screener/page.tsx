@@ -2,10 +2,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { getScreener } from "@/lib/api";
 import type { ViewRow } from "@/lib/types";
-import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
 
 const PAGE_SIZE = 50;
@@ -20,6 +19,61 @@ const SORT_OPTIONS = [
   { value: "reg_pass_count",           label: "Reg Pass" },
   { value: "reg_fail_count",           label: "Reg Fail" },
 ];
+
+// Columns shown in the screener table (curated analytical subset)
+const COLUMNS: { key: string; label: string }[] = [
+  { key: "official_name",             label: "Entity" },
+  { key: "hq_country",               label: "Country" },
+  { key: "ownership_status",         label: "Ownership" },
+  { key: "pr_code",                  label: "Priority" },
+  { key: "pr_fragility",             label: "Fragility" },
+  { key: "tech_count",               label: "Tech" },
+  { key: "hhi_structural",           label: "HHI" },
+  { key: "reg_pass_count",           label: "Reg ✓" },
+  { key: "reg_fail_count",           label: "Reg ✗" },
+  { key: "sanction_link_count",      label: "Sanctions" },
+  { key: "buyer_contract_count",     label: "Contracts" },
+];
+
+// ── Narrative pills ────────────────────────────────────────────────────────────
+
+function FragilityPill({ value }: { value: unknown }) {
+  const v = String(value ?? "").toUpperCase().trim();
+  if (!v || v === "NULL" || v === "UNDEFINED" || v === "—" || v === "") {
+    return <span className="text-terminal-dim text-[10px]">—</span>;
+  }
+  const styles =
+    v === "HIGH"   ? "bg-red-950 text-terminal-red border-terminal-red" :
+    v === "MEDIUM" ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
+    v === "LOW"    ? "bg-green-950 text-terminal-green border-terminal-green" :
+    "bg-terminal-muted text-terminal-secondary border-terminal-border";
+  return (
+    <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${styles}`}>
+      {v}
+    </span>
+  );
+}
+
+function SanctionBadge({ count }: { count: unknown }) {
+  const n = Number(count ?? 0);
+  if (!n) return <span className="text-terminal-dim text-[10px]">—</span>;
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-bold text-terminal-red">
+      <AlertTriangle size={10} className="shrink-0" />
+      {n}
+    </span>
+  );
+}
+
+function formatCell(key: string, value: unknown): React.ReactNode {
+  if (key === "pr_fragility")       return <FragilityPill value={value} />;
+  if (key === "sanction_link_count") return <SanctionBadge count={value} />;
+  if (value === null || value === undefined) return <span className="text-terminal-dim">—</span>;
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(3);
+  }
+  return String(value);
+}
 
 export default function ScreenerPage() {
   const router = useRouter();
@@ -68,6 +122,7 @@ export default function ScreenerPage() {
   const total = data?.total ?? 0;
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pages = Math.ceil(total / PAGE_SIZE) || 1;
+  const rows = data?.data ?? [];
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -131,16 +186,50 @@ export default function ScreenerPage() {
         <div className="text-terminal-red text-xs panel px-4 py-3">ERROR: {String(error)}</div>
       )}
 
-      <div className="panel flex-1 overflow-hidden">
-        <DataTable
-          data={data?.data ?? []}
-          onRowClick={handleRow}
-          maxHeight="calc(100vh - 280px)"
-        />
+      <div className="panel flex-1 overflow-auto">
+        {isFetching && rows.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-terminal-orange text-xs animate-pulse tracking-widest">
+            LOADING…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-terminal-dim text-xs tracking-widest">
+            NO DATA
+          </div>
+        ) : (
+          <table className="dfm-table w-full">
+            <thead>
+              <tr>
+                {COLUMNS.map(({ key, label }) => (
+                  <th key={key} className="whitespace-nowrap">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => {
+                const hasRegFail  = Number(row.reg_fail_count  ?? 0) > 0;
+                const hasSanction = Number(row.sanction_link_count ?? 0) > 0;
+                const rowClass = [
+                  "cursor-pointer transition-colors",
+                  hasRegFail  ? "border-l-2 border-terminal-orange"  : "border-l-2 border-transparent",
+                  hasSanction ? "bg-red-950/20" : "",
+                ].filter(Boolean).join(" ");
+                return (
+                  <tr key={i} onClick={() => handleRow(row)} className={rowClass}>
+                    {COLUMNS.map(({ key }) => (
+                      <td key={key} className="whitespace-nowrap">
+                        {formatCell(key, row[key])}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
-        <StatusBar loading={isFetching} message={`${total} entities · SCREENER`} />
+        <StatusBar loading={isFetching} message={`${total.toLocaleString()} entities · SCREENER`} />
         <div className="flex items-center gap-2 pr-2">
           <button onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0}
             className="text-terminal-cyan disabled:opacity-30"><ChevronLeft size={16} /></button>

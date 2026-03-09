@@ -248,6 +248,11 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
                 ["Norm. evals",      String((scenario.normative_compliance as any)?.eval_count ?? "—")],
                 ["Norm. pass",       String((scenario.normative_compliance as any)?.pass_count ?? "—")],
                 ["Norm. fail",       String((scenario.normative_compliance as any)?.fail_count ?? "—")],
+                ["SC role",          String((scenario.supply_chain as any)?.supply_chain_role ?? "—")],
+                ["SC tech code",     String((scenario.supply_chain as any)?.dfm_tech_code ?? "—")],
+                ["Autonomy flag",    String((scenario.autonomy as any)?.autonomy_flag ?? "—")],
+                ["EU entities",      String((scenario.autonomy as any)?.eu_entities_remaining ?? "—")],
+                ["Non-EU entities",  String((scenario.autonomy as any)?.non_eu_entities_remaining ?? "—")],
               ].map(([label, val]) => (
                 <div key={label} className="flex justify-between gap-3 text-xs py-0.5 border-b border-terminal-muted">
                   <span className="text-terminal-secondary">{label}</span>

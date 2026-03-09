@@ -56,6 +56,14 @@ const METRICS: MetricRow[] = [
   { group: "NORMATIVE", label: "Fail",                              extract: s => str((s.normative_compliance as any)?.fail_count) },
 
   { group: "TECH",      label: "Tech Domains",                      extract: s => String(s.tech_domains?.length ?? "—") },
+
+  { group: "SUPPLY CHAIN", label: "SC Role",        highlight: true, extract: s => str((s.supply_chain as any)?.supply_chain_role) },
+  { group: "SUPPLY CHAIN", label: "SC Tech Code",                    extract: s => str((s.supply_chain as any)?.dfm_tech_code) },
+  { group: "SUPPLY CHAIN", label: "SC Proc. Value",                  extract: s => str((s.supply_chain as any)?.procurement_value) },
+
+  { group: "AUTONOMY",     label: "Autonomy Flag",  highlight: true, extract: s => str((s.autonomy as any)?.autonomy_flag) },
+  { group: "AUTONOMY",     label: "EU Entities",                     extract: s => str((s.autonomy as any)?.eu_entities_remaining) },
+  { group: "AUTONOMY",     label: "Non-EU Entities",                 extract: s => str((s.autonomy as any)?.non_eu_entities_remaining) },
 ];
 
 const GROUPS = Array.from(new Set(METRICS.map((m) => m.group)));

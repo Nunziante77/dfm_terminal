@@ -98,6 +98,34 @@ def entity_scenario(entity_id: str, db: Session = Depends(get_db)):
         """,
         {"eid": entity_id},
     )
+    # Top supply chain role for this entity (highest-value position)
+    supply_chain = run_query(
+        db,
+        """
+        SELECT supply_chain_role, dfm_tech_code, procurement_value, contracts
+        FROM v_dfm_defence_supply_chain_signal_v1
+        WHERE entity_id = :eid
+        ORDER BY procurement_value DESC NULLS LAST
+        LIMIT 1
+        """,
+        {"eid": entity_id},
+    )
+    # Autonomy flag for the entity's primary strategic priority
+    autonomy = run_query(
+        db,
+        """
+        SELECT f.pr_code, f.autonomy_flag, f.eu_entities_remaining, f.non_eu_entities_remaining
+        FROM v_dfm_pr_autonomy_gap_flags_v1 f
+        WHERE f.pr_code = (
+            SELECT primary_strategic_code
+            FROM v_dfm_rank_with_scoring_layers_v3
+            WHERE entity_id = :eid
+            LIMIT 1
+        )
+        LIMIT 1
+        """,
+        {"eid": entity_id},
+    )
 
     return {
         "entity_id": entity_id,
@@ -110,4 +138,6 @@ def entity_scenario(entity_id: str, db: Session = Depends(get_db)):
         "events": events[0] if events else None,
         "graph_connectivity": graph_conn[0] if graph_conn else {"edge_count": 0},
         "normative_compliance": normative[0] if normative else None,
+        "supply_chain": supply_chain[0] if supply_chain else None,
+        "autonomy": autonomy[0] if autonomy else None,
     }

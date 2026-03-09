@@ -159,16 +159,35 @@ export default function PrioritiesPage() {
           )}
 
           {selectedPrId && detailTab === "entities" && (
-            <DataTable
-              data={entities?.data ?? []}
-              columns={[
-                "entity_id", "official_name", "headquarters_country_iso2",
-                "primary_strategic_code", "final_score", "highest_trl",
-                "supported_op_count", "supported_tc_count",
-              ]}
-              onRowClick={handleEntityRow}
-              maxHeight="calc(100vh - 280px)"
-            />
+            <div className="flex flex-col overflow-hidden flex-1">
+              {/* Autonomy + concentration header */}
+              {entities && (
+                <div className="grid grid-cols-5 gap-px border-b border-terminal-border bg-terminal-border shrink-0">
+                  {[
+                    { label: "HHI STRUCTURAL",    value: entities.hhi_structural != null ? Number(entities.hhi_structural).toFixed(3) : "—", warn: entities.hhi_structural != null && Number(entities.hhi_structural) > 0.25 },
+                    { label: "CONCENTRATION",      value: entities.concentration_entity_count != null ? String(entities.concentration_entity_count) + " entities" : "—", warn: false },
+                    { label: "AUTONOMY FLAG",      value: entities.autonomy_flag ?? "—", warn: !!entities.autonomy_flag && entities.autonomy_flag !== "RESILIENT" },
+                    { label: "EU ENTITIES",        value: entities.eu_entities_remaining != null ? String(entities.eu_entities_remaining) : "—", warn: false },
+                    { label: "NON-EU ENTITIES",    value: entities.non_eu_entities_remaining != null ? String(entities.non_eu_entities_remaining) : "—", warn: (entities.non_eu_entities_remaining ?? 0) > (entities.eu_entities_remaining ?? 0) },
+                  ].map(({ label, value, warn }) => (
+                    <div key={label} className="bg-terminal-panel px-3 py-2">
+                      <div className="text-[9px] text-terminal-dim tracking-widest mb-0.5">{label}</div>
+                      <div className={`text-xs font-mono font-semibold ${warn ? "text-terminal-orange" : "text-terminal-cyan"}`}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <DataTable
+                data={entities?.data ?? []}
+                columns={[
+                  "entity_id", "official_name", "headquarters_country_iso2",
+                  "primary_strategic_code", "final_score", "highest_trl",
+                  "supported_op_count", "supported_tc_count",
+                ]}
+                onRowClick={handleEntityRow}
+                maxHeight="calc(100vh - 340px)"
+              />
+            </div>
           )}
 
           {selectedPrId && detailTab === "normative" && (
