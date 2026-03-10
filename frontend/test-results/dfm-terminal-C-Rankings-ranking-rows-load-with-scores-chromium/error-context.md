@@ -1,0 +1,173 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]: DFM TERMINAL
+      - generic [ref=e5]: Strategic Intelligence Platform
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - img [ref=e8]
+          - generic [ref=e10]: LIVE
+        - generic [ref=e11]: 02:15:18
+        - generic [ref=e12]: UTC
+    - generic [ref=e13]:
+      - complementary [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: DFM
+          - generic [ref=e17]: TERMINAL
+        - navigation [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]: CORE
+            - link "SEARCH S" [ref=e21] [cursor=pointer]:
+              - /url: /
+              - img [ref=e22]
+              - generic [ref=e25]: SEARCH
+              - generic [ref=e26]: S
+            - link "SCREENER R" [ref=e27] [cursor=pointer]:
+              - /url: /screener
+              - img [ref=e28]
+              - generic [ref=e29]: SCREENER
+              - generic [ref=e30]: R
+            - link "RANKINGS K" [ref=e31] [cursor=pointer]:
+              - /url: /rankings
+              - img [ref=e32]
+              - generic [ref=e36]: RANKINGS
+              - generic [ref=e37]: K
+            - link "PRIORITIES P" [ref=e38] [cursor=pointer]:
+              - /url: /priorities
+              - img [ref=e39]
+              - generic [ref=e42]: PRIORITIES
+              - generic [ref=e43]: P
+            - link "GRAPH G" [ref=e44] [cursor=pointer]:
+              - /url: /graph
+              - img [ref=e45]
+              - generic [ref=e49]: GRAPH
+              - generic [ref=e50]: G
+            - link "COMPARE C" [ref=e51] [cursor=pointer]:
+              - /url: /compare
+              - img [ref=e52]
+              - generic [ref=e55]: COMPARE
+              - generic [ref=e56]: C
+            - link "SCENARIOS X" [ref=e57] [cursor=pointer]:
+              - /url: /scenarios
+              - img [ref=e58]
+              - generic [ref=e60]: SCENARIOS
+              - generic [ref=e61]: X
+          - generic [ref=e62]:
+            - generic [ref=e63]: INTELLIGENCE
+            - link "PATENTS A" [ref=e64] [cursor=pointer]:
+              - /url: /patents
+              - img [ref=e65]
+              - generic [ref=e67]: PATENTS
+              - generic [ref=e68]: A
+            - link "RESEARCH H" [ref=e69] [cursor=pointer]:
+              - /url: /research
+              - img [ref=e70]
+              - generic [ref=e73]: RESEARCH
+              - generic [ref=e74]: H
+            - link "PROCUREMENT O" [ref=e75] [cursor=pointer]:
+              - /url: /procurement
+              - img [ref=e76]
+              - generic [ref=e80]: PROCUREMENT
+              - generic [ref=e81]: O
+            - link "OWNERSHIP W" [ref=e82] [cursor=pointer]:
+              - /url: /ownership
+              - img [ref=e83]
+              - generic [ref=e88]: OWNERSHIP
+              - generic [ref=e89]: W
+          - generic [ref=e90]:
+            - generic [ref=e91]: REGULATORY
+            - link "NORMATIVE N" [ref=e92] [cursor=pointer]:
+              - /url: /normative
+              - img [ref=e93]
+              - generic [ref=e96]: NORMATIVE
+              - generic [ref=e97]: "N"
+            - link "STRATEGIC D" [ref=e98] [cursor=pointer]:
+              - /url: /strategic
+              - img [ref=e99]
+              - generic [ref=e101]: STRATEGIC
+              - generic [ref=e102]: D
+            - link "COMPLIANCE L" [ref=e103] [cursor=pointer]:
+              - /url: /compliance
+              - img [ref=e104]
+              - generic [ref=e106]: COMPLIANCE
+              - generic [ref=e107]: L
+          - generic [ref=e108]:
+            - generic [ref=e109]: TEMPORAL
+            - link "EVENTS V" [ref=e110] [cursor=pointer]:
+              - /url: /events
+              - img [ref=e111]
+              - generic [ref=e113]: EVENTS
+              - generic [ref=e114]: V
+            - link "TIMELINE T" [ref=e115] [cursor=pointer]:
+              - /url: /timeline
+              - img [ref=e116]
+              - generic [ref=e119]: TIMELINE
+              - generic [ref=e120]: T
+          - generic [ref=e121]:
+            - generic [ref=e122]: STRATEGIC INTELLIGENCE
+            - link "SUPPLY CHAIN U" [ref=e123] [cursor=pointer]:
+              - /url: /supply-chain
+              - img [ref=e124]
+              - generic [ref=e127]: SUPPLY CHAIN
+              - generic [ref=e128]: U
+            - link "TECHNOLOGY Y" [ref=e129] [cursor=pointer]:
+              - /url: /technology
+              - img [ref=e130]
+              - generic [ref=e133]: TECHNOLOGY
+              - generic [ref=e134]: "Y"
+            - link "AUTONOMY M" [ref=e135] [cursor=pointer]:
+              - /url: /autonomy
+              - img [ref=e136]
+              - generic [ref=e138]: AUTONOMY
+              - generic [ref=e139]: M
+            - link "CAPABILITIES B" [ref=e140] [cursor=pointer]:
+              - /url: /capabilities
+              - img [ref=e141]
+              - generic [ref=e145]: CAPABILITIES
+              - generic [ref=e146]: B
+        - generic [ref=e147]: v1.1.0 · dfm_db_semantic
+      - main [ref=e148]:
+        - generic [ref=e149]:
+          - generic [ref=e150]:
+            - img [ref=e151]
+            - heading "STRATEGIC RANKING" [level=1] [ref=e155]
+            - generic [ref=e156]: v_dfm_rank_with_scoring_layers_v3
+          - generic [ref=e157]:
+            - textbox "Strategic code (PR-…)" [ref=e158]
+            - textbox "Country ISO2…" [ref=e159]
+            - combobox [ref=e160]:
+              - option "Final Score" [selected]
+              - option "Base Score"
+              - option "Highest TRL"
+              - option "Ops Coverage"
+              - option "Name"
+            - button "↓ DESC" [ref=e161] [cursor=pointer]
+            - button "APPLY" [ref=e162] [cursor=pointer]
+            - generic [ref=e163]: 0 entities
+          - generic [ref=e165]: LOADING…
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - generic [ref=e169]: LOADING…
+              - generic [ref=e170]: 2026-03-10 01:15:18 UTC
+              - generic [ref=e171]: dfm_db_semantic
+              - generic [ref=e172]: PostgreSQL
+            - generic [ref=e173]:
+              - button [disabled] [ref=e174]:
+                - img [ref=e175]
+              - generic [ref=e177]: 1/1
+              - button [disabled] [ref=e178]:
+                - img [ref=e179]
+    - contentinfo [ref=e181]:
+      - generic [ref=e183]: READY
+      - generic [ref=e184]: 2026-03-10 01:15:18 UTC
+      - generic [ref=e185]: dfm_db_semantic
+      - generic [ref=e186]: PostgreSQL
+  - generic [ref=e187]:
+    - img [ref=e189]
+    - button "Open Tanstack query devtools" [ref=e237] [cursor=pointer]:
+      - img [ref=e238]
+  - alert [ref=e286]
+```

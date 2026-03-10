@@ -1,0 +1,13 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Next / Node
+frontend/node_modules/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/package-lock.json
+
+# OS
+.DS_Store
