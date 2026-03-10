@@ -53,6 +53,11 @@ export default function TechnologyPage() {
 
   const loading = clustersLoading || concLoading || vulnLoading;
 
+  const rowCount =
+    tab === "clusters"        ? (clusters?.total ?? 0) :
+    tab === "concentration"   ? (concentration?.total ?? 0) :
+    (vulnerabilities?.total ?? 0);
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "clusters",        label: "TECH CLUSTERS" },
     { key: "concentration",   label: "CONCENTRATION" },
@@ -65,7 +70,7 @@ export default function TechnologyPage() {
         <Cpu size={16} className="text-terminal-cyan" />
         <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">TECHNOLOGY LANDSCAPE</h1>
         <span className="text-terminal-dim text-xs">
-          v_dfm_defence_technology_market_v3 · v_dfm_pr_concentration_index_v2 · v_dfm_defence_technology_demand_by_country_v2
+          supply-side market structure · industrial concentration
         </span>
       </div>
 
@@ -95,9 +100,7 @@ export default function TechnologyPage() {
         <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
         <button onClick={clear} className="text-terminal-dim text-xs hover:text-terminal-text">CLEAR</button>
         <div className="flex-1" />
-        <span className="text-terminal-secondary text-xs">
-          {loading ? "LOADING…" : tab.toUpperCase()}
-        </span>
+        <span className="text-terminal-secondary text-xs">{rowCount.toLocaleString()} rows</span>
       </div>
 
       {/* Tabs */}
@@ -144,11 +147,7 @@ export default function TechnologyPage() {
 
       <StatusBar
         loading={loading}
-        message={`TECHNOLOGY · ${tab.toUpperCase()} · ${
-          tab === "clusters" ? (clusters?.total ?? 0) :
-          tab === "concentration" ? (concentration?.total ?? 0) :
-          (vulnerabilities?.total ?? 0)
-        } rows`}
+        message={`TECHNOLOGY · ${tab.toUpperCase()} · ${rowCount.toLocaleString()} rows`}
       />
     </div>
   );

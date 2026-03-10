@@ -56,6 +56,11 @@ export default function CapabilitiesPage() {
 
   const loading = demandLoading || gapsLoading || byTechLoading;
 
+  const rowCount =
+    tab === "demand"        ? (demand?.total ?? 0) :
+    tab === "gaps"          ? (gaps?.total ?? 0) :
+    (byTech?.total ?? 0);
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "demand",        label: "CAPABILITY DEMAND" },
     { key: "gaps",          label: "CAPABILITY GAPS" },
@@ -66,9 +71,9 @@ export default function CapabilitiesPage() {
     <div className="flex flex-col gap-4 h-full">
       <div className="flex items-center gap-3">
         <Target size={16} className="text-terminal-cyan" />
-        <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">CAPABILITY DEMAND</h1>
+        <h1 className="text-terminal-cyan text-sm font-bold tracking-widest">CAPABILITY INTELLIGENCE</h1>
         <span className="text-terminal-dim text-xs">
-          v_dfm_defence_technology_market_v3 · v_dfm_procurement_supply_chain_v4 · v_dfm_defence_technology_demand_by_country_v2
+          demand-gap analysis · procurement coverage
         </span>
       </div>
 
@@ -98,9 +103,7 @@ export default function CapabilitiesPage() {
         <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
         <button onClick={clear} className="text-terminal-dim text-xs hover:text-terminal-text">CLEAR</button>
         <div className="flex-1" />
-        <span className="text-terminal-secondary text-xs">
-          {loading ? "LOADING…" : tab.toUpperCase()}
-        </span>
+        <span className="text-terminal-secondary text-xs">{rowCount.toLocaleString()} rows</span>
       </div>
 
       {/* Tabs */}

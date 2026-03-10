@@ -7,6 +7,7 @@ import {
   getAutonomyGaps,
   getAutonomyDependencies,
 } from "@/lib/api";
+import { AUTONOMY_FLAG_LABELS, formatAutonomyFlag, autonomyFlagIsWarn } from "@/lib/autonomy";
 import type { ViewRow } from "@/lib/types";
 import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
@@ -16,19 +17,20 @@ type Tab = "index" | "gaps" | "dependencies";
 // ── Narrative rendering ──────────────────────────────────────────────────────
 
 function AutonomyFlagPill({ value }: { value: unknown }) {
-  const v = String(value ?? "").toUpperCase().trim();
-  if (!v || v === "NULL" || v === "UNDEFINED" || v === "—") {
+  const raw = String(value ?? "").toUpperCase().trim();
+  if (!raw || raw === "NULL" || raw === "UNDEFINED" || raw === "—") {
     return <span className="text-terminal-dim text-[10px]">—</span>;
   }
+  const label = AUTONOMY_FLAG_LABELS[raw] ?? raw;
   const styles =
-    v === "CRITICAL"   ? "bg-red-950 text-terminal-red border-terminal-red" :
-    v === "VULNERABLE" ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
-    v === "RESILIENT"  ? "bg-green-950 text-terminal-green border-terminal-green" :
-    v === "DEPENDENT"  ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
+    raw === "EU_COVERAGE_ZERO" ? "bg-red-950 text-terminal-red border-terminal-red" :
+    raw === "EU_COVERAGE_LOW"  ? "bg-amber-950 text-terminal-orange border-terminal-orange" :
+    raw === "EU_COVERAGE_OK"   ? "bg-green-950 text-terminal-green border-terminal-green" :
     "bg-terminal-muted text-terminal-secondary border-terminal-border";
   return (
-    <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${styles}`}>
-      {v}
+    <span className={`inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 border rounded-sm tracking-wider ${styles}`}
+          title={raw}>
+      {label}
     </span>
   );
 }
@@ -144,10 +146,9 @@ export default function AutonomyPage() {
             className="bg-terminal-muted border border-terminal-border text-terminal-text text-xs px-2 py-1.5 outline-none"
           >
             <option value="">All flags</option>
-            <option value="CRITICAL">CRITICAL</option>
-            <option value="VULNERABLE">VULNERABLE</option>
-            <option value="DEPENDENT">DEPENDENT</option>
-            <option value="RESILIENT">RESILIENT</option>
+            <option value="EU_COVERAGE_ZERO">No EU Coverage</option>
+            <option value="EU_COVERAGE_LOW">EU Partial</option>
+            <option value="EU_COVERAGE_OK">EU Sufficient</option>
           </select>
         )}
         <button onClick={apply} className="text-terminal-cyan text-xs hover:text-white">APPLY</button>
@@ -193,7 +194,7 @@ export default function AutonomyPage() {
               <tbody>
                 {(gaps?.data ?? []).map((row: ViewRow, i: number) => {
                   const flag = String(row.autonomy_flag ?? "").toUpperCase();
-                  const isCritical = flag === "CRITICAL" || flag === "VULNERABLE";
+                  const isCritical = autonomyFlagIsWarn(flag);
                   return (
                     <tr
                       key={i}

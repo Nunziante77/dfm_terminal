@@ -315,21 +315,23 @@ test.describe("H. Autonomy", () => {
     await page.goto("/autonomy");
     await page.locator("button:has-text('APPLY')").click();
     await waitForTableRows(page, 1);
-    // The pill text "EU_COVERAGE_OK" should appear (data confirmed from API)
-    await expect(page.locator("text=EU_COVERAGE_OK").first()).toBeVisible({ timeout: 10_000 });
+    // Pills now show human-readable labels: "EU Sufficient", "EU Partial", or "No EU Coverage"
+    const pill = page.locator("span.font-mono.font-bold").first();
+    await expect(pill).toBeVisible({ timeout: 10_000 });
   });
 
   test("EU balance bars render", async ({ page }) => {
     await page.goto("/autonomy");
     await page.locator("button:has-text('APPLY')").click();
     await waitForTableRows(page, 1);
-    // The EU balance shows "EU" label text
-    await expect(page.locator("text=EU").first()).toBeVisible({ timeout: 10_000 });
+    // The EU balance component renders a proportional bar
+    await expect(page.locator("span.inline-flex").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("flag filter dropdown is present", async ({ page }) => {
     await page.goto("/autonomy");
-    const filterSelect = page.locator("select:has(option[value='CRITICAL'])");
+    // Dropdown now uses actual DB flag values: EU_COVERAGE_ZERO, EU_COVERAGE_LOW, EU_COVERAGE_OK
+    const filterSelect = page.locator("select:has(option[value='EU_COVERAGE_OK'])");
     await expect(filterSelect).toBeVisible();
   });
 

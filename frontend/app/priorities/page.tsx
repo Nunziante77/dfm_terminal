@@ -9,6 +9,7 @@ import {
   getPriorityEntities,
   getPriorityNormative,
 } from "@/lib/api";
+import { formatAutonomyFlag, autonomyFlagIsWarn } from "@/lib/autonomy";
 import type { ViewRow } from "@/lib/types";
 import DataTable from "@/components/DataTable";
 import StatusBar from "@/components/StatusBar";
@@ -166,7 +167,7 @@ export default function PrioritiesPage() {
                   {[
                     { label: "HHI STRUCTURAL",    value: entities.hhi_structural != null ? Number(entities.hhi_structural).toFixed(3) : "—", warn: entities.hhi_structural != null && Number(entities.hhi_structural) > 0.25 },
                     { label: "CONCENTRATION",      value: entities.concentration_entity_count != null ? String(entities.concentration_entity_count) + " entities" : "—", warn: false },
-                    { label: "AUTONOMY FLAG",      value: entities.autonomy_flag ?? "—", warn: !!entities.autonomy_flag && entities.autonomy_flag !== "RESILIENT" },
+                    { label: "AUTONOMY FLAG",      value: formatAutonomyFlag(entities.autonomy_flag), warn: autonomyFlagIsWarn(entities.autonomy_flag) },
                     { label: "EU ENTITIES",        value: entities.eu_entities_remaining != null ? String(entities.eu_entities_remaining) : "—", warn: false },
                     { label: "NON-EU ENTITIES",    value: entities.non_eu_entities_remaining != null ? String(entities.non_eu_entities_remaining) : "—", warn: (entities.non_eu_entities_remaining ?? 0) > (entities.eu_entities_remaining ?? 0) },
                   ].map(({ label, value, warn }) => (

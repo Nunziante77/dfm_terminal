@@ -16,6 +16,7 @@ import {
   getEntityEventsSummary, getEntityOwnership, getEntityFdi,
   getEntitySupplyChain, getEntityTechnology,
 } from "@/lib/api";
+import { formatAutonomyFlag } from "@/lib/autonomy";
 import type { ViewRow } from "@/lib/types";
 import MetricCard from "@/components/MetricCard";
 import DataTable from "@/components/DataTable";
@@ -256,7 +257,7 @@ export default function EntityPage({ params }: { params: { id: string } }) {
                 ["Norm. fail",       String((scenario.normative_compliance as any)?.fail_count ?? "—")],
                 ["SC role",          String((scenario.supply_chain as any)?.supply_chain_role ?? "—")],
                 ["SC tech code",     String((scenario.supply_chain as any)?.dfm_tech_code ?? "—")],
-                ["Autonomy flag",    String((scenario.autonomy as any)?.autonomy_flag ?? "—")],
+                ["Autonomy flag",    formatAutonomyFlag((scenario.autonomy as any)?.autonomy_flag)],
                 ["EU entities",      String((scenario.autonomy as any)?.eu_entities_remaining ?? "—")],
                 ["Non-EU entities",  String((scenario.autonomy as any)?.non_eu_entities_remaining ?? "—")],
               ].map(([label, val]) => (
